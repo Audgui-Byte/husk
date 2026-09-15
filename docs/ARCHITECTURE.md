@@ -32,7 +32,7 @@ entirely in the provider.
 
 ```
                        ┌──────────────────────────────────────────┐
-   Claude Code ───────▶│  @husk-ai/mcp        stdio + streamable HTTP│
+   Claude Code ───────▶│  @husk-ai/mcp        MCP over stdio          │
    Cursor, Zed         └────────────────────┬─────────────────────┘
    any MCP client                           │
                        ┌────────────────────▼─────────────────────┐
@@ -162,8 +162,10 @@ claude mcp add husk -- npx -y @husk-ai/mcp
 
 That is the whole onboarding for the largest audience. `@husk-ai/mcp` exposes the computer
 as MCP tools over stdio, so Claude Code — or Cursor, or Zed, or anything speaking MCP —
-gets a Linux machine mid-conversation with no account, no config file, and no signup. The
-same server runs over streamable HTTP for remote clients.
+gets a Linux machine mid-conversation with no account, no config file, and no signup.
+
+Stdio is the only transport today. A streamable-HTTP transport for remote clients is
+specified in [SPEC-remote-mcp.md](SPEC-remote-mcp.md) and not implemented.
 
 ## Deliberate non-goals
 

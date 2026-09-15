@@ -166,7 +166,7 @@ packages/
   browser      Chromium lifecycle and CDP automation
   agent        tool-calling loop and built-in tools
   adapters     Discord, Slack, Telegram, webhook
-  mcp          MCP server (stdio + streamable HTTP)
+  mcp          MCP server (stdio)
   server       control-plane API + bot host
   sdk          typed client for the control plane
   cli          the husk command

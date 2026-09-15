@@ -268,11 +268,9 @@ All sixteen pass `--quality showcase` with 9/9 artifact checks, 0 composition
 errors and 0 warnings, and `visual-check` clean at 1440×900 through 2048×1320 in
 both themes.
 
-## One place the code and the docs disagree
+## Transports
 
-`docs/ARCHITECTURE.md` describes `@husk-ai/mcp` as "stdio + streamable HTTP" and
-says the same server runs over streamable HTTP for remote clients. It does not.
-`packages/mcp/src/server.ts:139` constructs a `StdioServerTransport` and that is
-the only transport in the package; `docs/SPEC-remote-mcp.md` records the remote
-transport as *proposed, not started* and names that same line as the blocker.
-Diagrams 01, 02, 11 and 12 draw stdio only.
+`packages/mcp/src/server.ts:139` constructs a `StdioServerTransport`, and that is
+the only transport in the package. `docs/SPEC-remote-mcp.md` records the remote
+streamable-HTTP transport as *proposed, not started*. Diagrams 01, 02, 11 and 12
+draw stdio only, which is what ships.
