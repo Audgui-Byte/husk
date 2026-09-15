@@ -26,7 +26,12 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # write, not read, because the last step cuts the GitHub Release. Until
+      # 0.1.2 that was done by hand every time, and a tag nobody turns into a
+      # Release is invisible: it shows up in no feed, no watch notification and
+      # not in the sidebar, so the only people who learn a version shipped are
+      # the ones already running `npm view`.
+      contents: write
       # Lets npm record where the tarball was built, so a consumer can verify
       # this repo produced it.
       id-token: write
@@ -89,6 +94,24 @@ jobs:
             echo "publishing @husk-ai/$pkg"
             npm publish --workspace="@husk-ai/$pkg" --access public --provenance
           done
+
+      # Last, and only on a real tag: if npm rejected a package there is nothing
+      # to announce. `--verify-tag` refuses to invent a Release for a tag that
+      # does not exist, and `--generate-notes` fills the body from the commits
+      # since the previous tag -- worth editing afterwards, but a Release with
+      # generated notes beats a tag with none.
+      - name: cut the GitHub Release
+        if: ${{ github.event_name == 'push' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists, leaving it alone"
+            exit 0
+          fi
+          gh release create "$tag" --verify-tag --generate-notes --title "$tag"
 
       - name: dry run summary
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
