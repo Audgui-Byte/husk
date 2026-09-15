@@ -7,10 +7,13 @@
 # This is also the only flavor that can run the rendered browser. `@husk-ai/browser`
 # downloads a headless Chromium at runtime, but a browser binary is useless without
 # the two dozen shared libraries it links against, and the slim images have none of
-# them -- measured: "Chromium is missing 20 shared libraries" on python:3.12-slim,
-# after a perfectly successful 111 MB download. They cannot be added later either,
-# because container computers mount their root filesystem read-only on purpose. So
-# they are baked in here, where the weight is already the point.
+# them -- measured on amd64: "Chromium is missing 20 shared libraries" on
+# python:3.12-slim, after a perfectly successful 111 MB download. They cannot be added
+# later either, because container computers mount their root filesystem read-only on
+# purpose. So they are baked in here, where the weight is already the point.
+#
+# husk's own `full` no longer resolves here: it uses Playwright's image, which carries
+# the same libraries. This matters only if you build and host these yourself.
 ARG HUSK_VERSION=0.1.0
 # Left bare for a local build; build.sh sets it when pushing to a registry.
 ARG HUSK_PYTHON
