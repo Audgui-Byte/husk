@@ -132,6 +132,12 @@ if (REPO_GIT) {
   // Shipped code that names the repo, asserted positively. A file carrying the
   // wrong URL fails this whatever the wrong URL turns out to be, which is the
   // whole difference from the deny list it replaces.
+  //
+  // The next three are a holding pattern, not the design. #62 derives the user
+  // agent as `husk/${VERSION} (+${REPO})`, and then there is no literal here to
+  // assert: the string comes from two single-homed facts. They will keep passing
+  // after that change, because the derived string contains the same substring,
+  // so they have to be deleted deliberately rather than left to fail.
   const operator = `the (+URL) in a user agent names the operator; use ${REPO}`;
   contains('packages/core/src/config.ts', `(+${REPO})`, operator);
   contains('packages/core/src/browse.ts', `(+${REPO})`, operator);
@@ -165,6 +171,9 @@ if (!SITES_ONLY) {
   const bump = `package.json is on ${VERSION}; bump this to match`;
   contains("packages/cli/src/version.ts", `VERSION = '${VERSION}'`, bump);
   contains("packages/core/src/index.ts", `HUSK_VERSION = '${VERSION}'`, bump);
+  // These three go with #62 for the same reason as the repo-URL assertions
+  // above: once the user agents interpolate ${VERSION}, they assert a substring
+  // of a string that can no longer disagree with the manifest.
   contains("packages/core/src/config.ts", `husk/${VERSION}`, bump);
   contains("packages/models/src/http.ts", `husk/${VERSION}`, bump);
   contains("packages/core/src/browse.ts", `husk-browser/${MAJOR_MINOR}`, bump);
