@@ -12,7 +12,9 @@
 # because container computers mount their root filesystem read-only on purpose. So
 # they are baked in here, where the weight is already the point.
 ARG HUSK_VERSION=0.1.0
-FROM ghcr.io/husk-sh/husk-python:${HUSK_VERSION} AS base
+# Left bare for a local build; build.sh sets it when pushing to a registry.
+ARG HUSK_PYTHON
+FROM ${HUSK_PYTHON:-husk-python}:${HUSK_VERSION} AS base
 
 LABEL org.opencontainers.image.title="husk-full" \
       husk.flavor="full"
