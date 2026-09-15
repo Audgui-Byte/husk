@@ -95,6 +95,21 @@ Then actually run the thing you changed. `husk doctor`, `husk up`, `husk exec` �
 CLI is the product's face, and a change that typechecks but reads badly in a terminal
 is not done.
 
+### Scripts that import the packages
+
+A throwaway script that drives `@husk-ai/*` must live inside the repo, or import
+absolute paths into `packages/*/dist`. Node resolves a bare specifier by walking up
+from the *script's* directory, so one saved anywhere else — a temp dir, your home
+directory — finds no workspace, silently binds the published package from npm, and
+happily reports on the released version instead of your branch.
+
+The tell is output that contradicts your diff: a value you deleted still showing up.
+This cost a verification pass that reported the wrong answer, and the giveaway was an
+image plan naming `debian:bookworm` — a fallback the branch under test had removed.
+
+Tests are safe from this. Vitest resolves from the workspace root, so colocated
+`src/**/*.test.ts` always sees your working tree.
+
 ## Adding a computer provider
 
 Implement `ComputerProvider` from `@husk-ai/core`. Here is what already exists and
