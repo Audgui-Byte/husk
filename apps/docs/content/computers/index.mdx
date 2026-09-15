@@ -183,9 +183,11 @@ network   egress reachable
 tools     git curl jq rg fd python3`}
 </Terminal>
 
-The `computer_info` tool runs `huskinfo` when it exists and assembles the same facts from
+The `computer_info` tool runs `huskinfo` when it exists and reconstructs what it can from
 `uname`, `id`, `nproc` and `df` when it does not — which is the default path, since the
-public images do not carry it.
+public images do not carry it. The reconstruction is close, not equal: husk's own version
+and flavor are not discoverable from inside the machine, so a computer on a public image
+knows slightly less about itself than one built from `sandbox/`.
 
 ## Where the records live
 
