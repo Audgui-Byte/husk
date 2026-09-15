@@ -15,6 +15,13 @@
  * A duplicated fact with no check is a fact that is already wrong and has not
  * been noticed yet. Every invariant below is one a human would otherwise have
  * to remember.
+ *
+ * The goal is not fewer copies. `REPO_URL` lives in both site config files, and
+ * two small Next apps each owning their own constants file is normal --
+ * extracting one string into a shared package would couple `apps/*` to
+ * `packages/*` for no other reason than to have one copy of it. This check
+ * exists so duplication can be safe, not so duplication can be avoided. The
+ * copies do not need to be fewer; they need to be observable to each other.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
