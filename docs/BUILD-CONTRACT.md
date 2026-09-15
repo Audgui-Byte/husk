@@ -42,7 +42,7 @@ packages/
                                openrouter, ollama, lmstudio, deepseek, mistral, cerebras
   sessions/   @husk-ai/sessions   transcript importers + the distiller (chat -> husk.yaml)
   agent/      @husk-ai/agent      the tool-calling loop + the built-in tools
-  mcp/        @husk-ai/mcp        MCP server (stdio + streamable http)
+  mcp/        @husk-ai/mcp        MCP server (stdio)
   server/     @husk-ai/server     control plane REST/WS + bot host
   adapters/   @husk-ai/adapters   discord / slack / telegram / webhook front ends
   sdk/        @husk-ai/sdk        typed client for the control plane
