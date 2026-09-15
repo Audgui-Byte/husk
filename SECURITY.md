@@ -2,8 +2,13 @@
 
 ## Reporting a vulnerability
 
-Email **security@husk.sh** rather than opening a public issue. Include what you did,
-what happened, and what you expected. We aim to acknowledge within 72 hours.
+Use GitHub's private vulnerability reporting rather than opening a public issue:
+**[Report a vulnerability](https://github.com/Hotragn/husk/security/advisories/new)**.
+That channel is private between you and the maintainers, and it is the only one
+monitored.
+
+Include what you did, what happened, and what you expected. Expect an
+acknowledgement within 72 hours.
 
 Please do not test against infrastructure you do not own. Husk is designed to run on
 your own machine; that is where it should be tested.
