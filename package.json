@@ -9,7 +9,7 @@
   },
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/console"
   ],
   "scripts": {
     "build": "npm run build -w @husk-ai/core -w @husk-ai/runtime -w @husk-ai/models -w @husk-ai/sessions -w @husk-ai/browser -w @husk-ai/agent -w @husk-ai/adapters -w @husk-ai/mcp -w @husk-ai/server -w @husk-ai/sdk -w @husk-ai/cli",
