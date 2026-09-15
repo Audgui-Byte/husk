@@ -110,6 +110,25 @@ image plan naming `debian:bookworm` — a fallback the branch under test had rem
 Tests are safe from this. Vitest resolves from the workspace root, so colocated
 `src/**/*.test.ts` always sees your working tree.
 
+### When the tool is lying, not the code
+
+`gh` prefers `GH_TOKEN` from the environment over the credentials `gh auth login`
+stored. When that token is the narrower of the two, commands that resolve
+organisation data fail on scope rather than on anything you wrote:
+
+```
+$ gh pr edit 38 --body-file body.md
+GraphQL: Your token has not been granted the required scopes to execute this
+query. The 'login' field requires one of the following scopes: ['read:org']
+```
+
+`gh pr create` and `gh api` are unaffected — they never touch those endpoints —
+so the failure looks specific to one command rather than to the token. Either
+use `gh api --method PATCH repos/OWNER/REPO/pulls/N -F body=@body.md`, or
+`env -u GH_TOKEN gh ...` to fall back to the stored credentials. `gh auth status`
+prints which token is active and what scopes it carries; read it before assuming
+the command is at fault.
+
 ## Adding a computer provider
 
 Implement `ComputerProvider` from `@husk-ai/core`. Here is what already exists and
