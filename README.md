@@ -66,8 +66,6 @@ On a laptop with Docker stopped and WSL2 installed, `exec` prints
 `Linux 6.18.33.2-microsoft-standard-WSL2` and `Python 3.14.4`. `doctor` reports every
 provider it probed, which one it would pick, and why the others were skipped.
 
-Read [Status](#status) before you run these.
-
 ## Turn a chat into a bot
 
 A conversation that worked once becomes a file you can run again.
@@ -219,10 +217,6 @@ four dotted octets is not a rule.
 Alpha, pre-1.0. The `husk.yaml` schema and the HTTP contract can still change between
 releases. What is known not to work today:
 
-- **The published `husk` command does nothing.** In 0.1.1 the CLI's bin wrapper never
-  reaches its entry point, so `npx @husk-ai/cli …` exits 0 and prints nothing, on every
-  platform. `npx -y @husk-ai/mcp` is unaffected, and so is a CLI built from source. A fix
-  is pending.
 - **The rendered browser is only confirmed on `local`.** The thirteen `browser_*` tools
   drive Chromium there today. On the container providers the root filesystem is mounted
   read-only, so Chromium's shared libraries have to arrive in the image rather than
