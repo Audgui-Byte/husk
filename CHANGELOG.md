@@ -22,13 +22,26 @@ not here.
 
 ### Fixed
 
+- **`husk --version` reported `0.1.0` while you were running 0.1.1.** Four constants
+  carried the version by hand and none were bumped with the manifests, so the CLI,
+  `husk doctor`, `/health`, `/v1/doctor`, the `X-Husk-Version` header and both
+  outbound User-Agent strings all named a release nobody was on. A drift check in CI
+  now fails the build if they diverge again.
+- **`flavor: full` never had a working browser on `docker` or `podman`.** The image
+  it actually landed on was `debian:bookworm`, which ships no Chromium, so the
+  `browser_*` tools on a `full` computer had nothing to drive. It resolves to
+  `mcr.microsoft.com/playwright:v1.59.1-noble` now.
+- Every flavour tried `ghcr.io/husk-sh/husk-<flavor>` first — a namespace husk does
+  not own and has never pushed to — so the first pull on every fresh install was a
+  guaranteed 404. It recovered quietly by substituting the public base image, which
+  meant you ran something other than the image your spec named and lost the
+  `huskinfo` script with it. Flavours resolve to a public image outright now, and
+  `HUSK_REGISTRY` turns the old two-step back on as an opt-in mirror.
 - `@husk-ai/mcp` documented a streamable HTTP transport it does not implement. The
   server speaks stdio, and the docs now say only that.
-- The install instructions named `@husk/mcp`, a package that does not exist. The
+- The install instructions named `@husk/mcp`. Nothing is published under that scope
+  and the scope is not ours, so the command 404'd for everyone who copied it. The
   published name is `@husk-ai/mcp`.
-- Container image flavours resolved against `ghcr.io/husk-sh`, a registry nobody can
-  pull from. Every flavour now points at its public base image, so a first run does
-  not die on an unauthorised pull.
 
 ### Security
 
