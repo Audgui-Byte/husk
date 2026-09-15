@@ -17,6 +17,19 @@ on:
         description: Pack and check everything, publish nothing.
         type: boolean
         default: true
+      # So the Release step can be exercised before a release depends on it. A
+      # step whose first real run is a real release is not a step anyone has
+      # tested. Point this at a throwaway tag and watch a Release appear.
+      #
+      # Name that tag so it does NOT match `v*`. Pushing a `v*` tag is the
+      # trigger above, and the publish step below runs on any tag push, so
+      # `git push origin v0.0.0-test` starts a real release rather than a
+      # rehearsal of one. `release-test-1` pushes inertly, and this input is
+      # then the only thing that reaches the Release step.
+      release_tag:
+        description: Existing tag to cut a GitHub Release for. Empty skips that step. Do not name it v*.
+        type: string
+        default: ''
 
 concurrency:
   group: release
@@ -101,17 +114,19 @@ jobs:
       # since the previous tag -- worth editing afterwards, but a Release with
       # generated notes beats a tag with none.
       - name: cut the GitHub Release
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' || inputs.release_tag != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
+          # On a tag push this is the tag. On a manual run it is whatever tag
+          # you named, which is how this step gets exercised outside a release.
+          TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
-          if gh release view "$tag" >/dev/null 2>&1; then
-            echo "Release $tag already exists, leaving it alone"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, leaving it alone"
             exit 0
           fi
-          gh release create "$tag" --verify-tag --generate-notes --title "$tag"
+          gh release create "$TAG" --verify-tag --generate-notes --title "$TAG"
 
       - name: dry run summary
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
