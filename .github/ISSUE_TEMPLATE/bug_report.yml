@@ -18,10 +18,32 @@ body:
     id: doctor-output
     attributes:
       label: "`husk doctor` output"
-      description: Paste the full output of `npx @husk-ai/cli doctor --json`.
+      description: >-
+        Paste the output of `npx @husk-ai/cli doctor --json`. It reports the husk
+        version, your Node version, your platform and which providers resolved, so
+        it covers every field below. If `doctor` itself is what failed, paste that
+        error instead.
       render: json
     validations:
-      required: true
+      required: false
+
+  - type: input
+    id: husk-version
+    attributes:
+      label: Husk version
+      description: Only needed if you could not attach the `doctor` output.
+      placeholder: "0.1.1"
+    validations:
+      required: false
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node version
+      description: Only needed if you could not attach the `doctor` output.
+      placeholder: "22.x"
+    validations:
+      required: false
 
   - type: input
     id: os
@@ -29,29 +51,13 @@ body:
       label: OS
       placeholder: "Windows 11, Ubuntu 24.04, macOS 15, etc."
     validations:
-      required: true
-
-  - type: input
-    id: node-version
-    attributes:
-      label: Node version
-      placeholder: "22.x"
-    validations:
-      required: true
-
-  - type: input
-    id: husk-version
-    attributes:
-      label: Husk version
-      description: Output of `npx @husk-ai/cli --version`.
-      placeholder: "0.1.0"
-    validations:
-      required: true
+      required: false
 
   - type: dropdown
     id: provider
     attributes:
       label: Computer provider
+      description: The one you were trying to use, if the bug is provider-specific.
       options:
         - docker
         - podman
@@ -61,4 +67,4 @@ body:
         - fly
         - "not applicable"
     validations:
-      required: true
+      required: false
