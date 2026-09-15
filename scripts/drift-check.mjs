@@ -23,7 +23,7 @@
  * exists so duplication can be safe, not so duplication can be avoided. The
  * copies do not need to be fewer; they need to be observable to each other.
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -89,20 +89,69 @@ for (const copy of [
 }
 
 /* -----------------------------------------------------------------------------
-   Project identity. husk.sh and the husk-sh GitHub org belong to someone else;
-   both were shipped in attribution headers and a security contact.
+   Project identity, as a chain rather than a deny list.
+
+   `absent(file, 'husk-sh/')` was never the copies observing each other. It was
+   every copy checked against one specific wrong answer we had already made, and
+   the next drift will not be that answer -- a deny list has nothing to say
+   about a value nobody predicted.
+
+   So: the root manifest is the arbiter, every other copy is asserted equal to
+   it, and `absent` survives only where nothing is derivable. Eleven published
+   manifests plus two site files carry this URL. They agree today by diligence.
 -------------------------------------------------------------------------------- */
-for (const file of [
-  'SECURITY.md',
-  'CODE_OF_CONDUCT.md',
-  'packages/core/src/config.ts',
-  'packages/core/src/browse.ts',
-  'packages/models/src/http.ts',
-  'packages/models/src/providers/compatible.ts',
-]) {
-  absent(file, 'husk.sh', 'that domain is not ours; use the repo URL');
-  absent(file, 'husk-sh/', 'that GitHub org is not ours; use Hotragn/husk');
+
+/** The one arbiter for where this project lives. */
+const REPO_GIT = JSON.parse(read('package.json')).repository?.url;
+if (REPO_GIT) {
+  passes.push(`package.json declares repository.url (${REPO_GIT})`);
+} else {
+  failures.push({
+    label: 'package.json declares repository.url',
+    hint: 'the root manifest arbitrates where this project lives -- without it every other copy is judged by an arbitrary twelfth',
+  });
 }
+
+/** The human-facing form: what a source file, a README or a link carries. */
+const REPO = (REPO_GIT ?? '').replace(/.git$/, '');
+
+if (REPO_GIT) {
+  for (const dir of readdirSync(join(ROOT, 'packages'))) {
+    const rel = `packages/${dir}/package.json`;
+    let url;
+    try {
+      url = JSON.parse(read(rel)).repository?.url;
+    } catch {
+      continue;
+    }
+    const label = `${rel} repository.url equals the root's`;
+    if (url === REPO_GIT) passes.push(label);
+    else failures.push({ label, hint: `expected ${REPO_GIT}, found ${url ?? 'nothing'}` });
+  }
+
+  // Shipped code that names the repo, asserted positively. A file carrying the
+  // wrong URL fails this whatever the wrong URL turns out to be, which is the
+  // whole difference from the deny list it replaces.
+  const operator = `the (+URL) in a user agent names the operator; use ${REPO}`;
+  contains('packages/core/src/config.ts', `(+${REPO})`, operator);
+  contains('packages/core/src/browse.ts', `(+${REPO})`, operator);
+  contains('packages/models/src/http.ts', `(+${REPO})`, operator);
+  contains(
+    'packages/models/src/providers/compatible.ts',
+    `'http-referer': '${REPO}'`,
+    `OpenRouter attributes traffic by this header; use ${REPO}`,
+  );
+  contains(
+    'SECURITY.md',
+    `${REPO}/security/advisories/new`,
+    "the disclosure channel has to be this repository's",
+  );
+}
+
+// Prose, where there is no string to equal. A deny list is all there is here,
+// and it only knows about the mistake already made.
+absent('CODE_OF_CONDUCT.md', 'husk.sh', 'that domain is not ours');
+absent('CODE_OF_CONDUCT.md', 'husk-sh/', 'that GitHub org is not ours');
 
 /* -----------------------------------------------------------------------------
    The version. package.json is the source; every file below hardcodes it.
@@ -128,10 +177,15 @@ if (!SITES_ONLY) {
    The sites. Non-required: run with `--sites`.
 -------------------------------------------------------------------------------- */
 if (SITES_ONLY) {
-  for (const file of ["apps/docs/src/lib/site.ts", "apps/web/src/lib/content.ts"]) {
-    absent(file, "husk.sh", "that domain is not ours; use the repo URL");
-    absent(file, "husk-sh/", "that GitHub org is not ours; use Hotragn/husk");
+  // Two copies of one fact, linked to the arbiter rather than to each other.
+  if (REPO_GIT) {
+    const derive = `derive it from the root manifest: ${REPO}`;
+    contains('apps/docs/src/lib/site.ts', `REPO_URL = '${REPO}'`, derive);
+    contains('apps/web/src/lib/content.ts', `REPO_URL = "${REPO}"`, derive);
   }
+  // Not derivable: SITE_URL reads NEXT_PUBLIC_SITE_URL now, so the requirement
+  // is that no domain is hardcoded at all, which only an absence can say.
+  absent('apps/web/src/lib/content.ts', 'husk.sh', 'SITE_URL reads NEXT_PUBLIC_SITE_URL; no domain belongs here');
   contains(
     "apps/docs/src/lib/site.ts",
     `HUSK_VERSION = '${VERSION}'`,
