@@ -2,11 +2,30 @@
 
 ## Reporting a vulnerability
 
-Email **security@husk.sh** rather than opening a public issue. Include what you did,
-what happened, and what you expected. We aim to acknowledge within 72 hours.
+Use GitHub's private vulnerability reporting rather than opening a public issue:
+**[Report a vulnerability](https://github.com/Hotragn/husk/security/advisories/new)**.
+That channel is private between you and the maintainers, and it is the only one
+monitored.
+
+Include what you did, what happened, and what you expected. Expect an
+acknowledgement within 72 hours.
 
 Please do not test against infrastructure you do not own. Husk is designed to run on
 your own machine; that is where it should be tested.
+
+## Supported versions
+
+Husk is pre-1.0. All eleven packages share one version and the release workflow
+publishes them together, so there is one supported line and it is the latest
+`0.1.x`. Nothing is backported to an earlier patch: on anything older, the
+upgrade is the fix.
+
+| version | supported |
+| --- | --- |
+| latest `0.1.x` | yes |
+| any earlier `0.1.x` | no — upgrade |
+
+Expect that to change at 1.0, when a released minor is worth holding open.
 
 ## What Husk guarantees, and what it does not
 

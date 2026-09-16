@@ -59,7 +59,11 @@ an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behaviour may be
 reported to the community leaders responsible for enforcement at
-**conduct@husk.sh**.
+[@hotragn](https://github.com/hotragn).
+
+husk is maintained by one person, so a report *about* the maintainer cannot go
+to the maintainer. For that, use [GitHub's abuse reporting](https://github.com/contact/report-abuse),
+which reaches GitHub Support rather than this project.
 
 All complaints will be reviewed and investigated promptly and fairly. All
 community leaders are obligated to respect the privacy and security of the
