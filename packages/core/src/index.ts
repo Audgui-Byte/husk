@@ -78,4 +78,4 @@ export type {
   DistilledAgent,
 } from './types/transcript.js';
 
-export const HUSK_VERSION = '0.1.2';
+export const HUSK_VERSION = '0.1.3';

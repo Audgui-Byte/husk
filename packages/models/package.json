@@ -1,6 +1,6 @@
 {
   "name": "@husk-ai/models",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "One model surface for Husk: Anthropic, OpenAI, Gemini, Ollama and every OpenAI-compatible gateway, with routing, fallback and cost accounting. No SDKs.",
   "license": "Apache-2.0",
   "repository": {
@@ -10,7 +10,15 @@
   },
   "homepage": "https://github.com/Hotragn/husk/tree/main/packages/models#readme",
   "bugs": "https://github.com/Hotragn/husk/issues",
-  "keywords": ["husk", "ai-agent", "llm", "anthropic", "openai", "ollama", "groq"],
+  "keywords": [
+    "husk",
+    "ai-agent",
+    "llm",
+    "anthropic",
+    "openai",
+    "ollama",
+    "groq"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -34,6 +42,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@husk-ai/core": "0.1.2"
+    "@husk-ai/core": "0.1.3"
   }
 }
