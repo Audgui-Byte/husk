@@ -1,6 +1,6 @@
 {
   "name": "@husk-ai/cli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "The husk command line: give your agent a computer, and turn a chat into a bot.",
   "license": "Apache-2.0",
   "repository": {
@@ -10,7 +10,13 @@
   },
   "homepage": "https://github.com/Hotragn/husk/tree/main/packages/cli#readme",
   "bugs": "https://github.com/Hotragn/husk/issues",
-  "keywords": ["husk", "ai-agent", "cli", "developer-tools", "npx"],
+  "keywords": [
+    "husk",
+    "ai-agent",
+    "cli",
+    "developer-tools",
+    "npx"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -36,11 +42,11 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@husk-ai/agent": "0.1.2",
-    "@husk-ai/core": "0.1.2",
-    "@husk-ai/models": "0.1.2",
-    "@husk-ai/runtime": "0.1.2",
-    "@husk-ai/sessions": "0.1.2",
+    "@husk-ai/agent": "0.1.3",
+    "@husk-ai/core": "0.1.3",
+    "@husk-ai/models": "0.1.3",
+    "@husk-ai/runtime": "0.1.3",
+    "@husk-ai/sessions": "0.1.3",
     "yaml": "^2.9.0"
   },
   "optionalDependencies": {

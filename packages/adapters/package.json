@@ -1,6 +1,6 @@
 {
   "name": "@husk-ai/adapters",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Chat front ends for Husk: Discord, Slack, Telegram, generic webhook.",
   "license": "Apache-2.0",
   "repository": {
@@ -10,7 +10,14 @@
   },
   "homepage": "https://github.com/Hotragn/husk/tree/main/packages/adapters#readme",
   "bugs": "https://github.com/Hotragn/husk/issues",
-  "keywords": ["husk", "ai-agent", "discord-bot", "slack-bot", "telegram-bot", "webhook"],
+  "keywords": [
+    "husk",
+    "ai-agent",
+    "discord-bot",
+    "slack-bot",
+    "telegram-bot",
+    "webhook"
+  ],
   "engines": {
     "node": ">=20.10"
   },
@@ -32,7 +39,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@husk-ai/core": "0.1.2",
+    "@husk-ai/core": "0.1.3",
     "ws": "^8.21.3"
   },
   "devDependencies": {
