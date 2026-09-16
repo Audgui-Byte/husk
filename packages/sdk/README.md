@@ -9,8 +9,8 @@ axios, no ws, no polyfills. Node >= 20.10.
 npm install @husk-ai/sdk
 ```
 
-The contract is [`docs/API.md`](../../docs/API.md), and where that disagrees
-with [`packages/server/src/routes/`](../server/src/routes) the routes win.
+The contract is [`docs/API.md`](https://github.com/Hotragn/husk/blob/main/docs/API.md), and where that disagrees
+with [`packages/server/src/routes/`](https://github.com/Hotragn/husk/tree/main/packages/server/src/routes) the routes win.
 `src/contract.test.ts` boots the real server — `createApp` from `@husk-ai/server`,
 a real socket, real `provider: 'local'` computers — and drives every method
 below against it, including the snippets on this page. This README describes

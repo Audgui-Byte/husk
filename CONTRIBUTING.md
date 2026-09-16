@@ -87,6 +87,10 @@ the best place to land a first contribution.
 
 ## Before you open a PR
 
+**Branch off `main`, and target `main`.** It is the only base for pull requests.
+`dev` is the pre-launch development history, kept for the record and tagged
+`history/pre-launch`; it shares no ancestor with `main` and nothing merges into it.
+
 ```bash
 npm run build:packages && npm run typecheck && npm test
 ```
@@ -94,6 +98,40 @@ npm run build:packages && npm run typecheck && npm test
 Then actually run the thing you changed. `husk doctor`, `husk up`, `husk exec` — the
 CLI is the product's face, and a change that typechecks but reads badly in a terminal
 is not done.
+
+### Scripts that import the packages
+
+A throwaway script that drives `@husk-ai/*` must live inside the repo, or import
+absolute paths into `packages/*/dist`. Node resolves a bare specifier by walking up
+from the *script's* directory, so one saved anywhere else — a temp dir, your home
+directory — finds no workspace, silently binds the published package from npm, and
+happily reports on the released version instead of your branch.
+
+The tell is output that contradicts your diff: a value you deleted still showing up.
+This cost a verification pass that reported the wrong answer, and the giveaway was an
+image plan naming `debian:bookworm` — a fallback the branch under test had removed.
+
+Tests are safe from this. Vitest resolves from the workspace root, so colocated
+`src/**/*.test.ts` always sees your working tree.
+
+### When the tool is lying, not the code
+
+`gh` prefers `GH_TOKEN` from the environment over the credentials `gh auth login`
+stored. When that token is the narrower of the two, commands that resolve
+organisation data fail on scope rather than on anything you wrote:
+
+```
+$ gh pr edit 38 --body-file body.md
+GraphQL: Your token has not been granted the required scopes to execute this
+query. The 'login' field requires one of the following scopes: ['read:org']
+```
+
+`gh pr create` and `gh api` are unaffected — they never touch those endpoints —
+so the failure looks specific to one command rather than to the token. Either
+use `gh api --method PATCH repos/OWNER/REPO/pulls/N -F body=@body.md`, or
+`env -u GH_TOKEN gh ...` to fall back to the stored credentials. `gh auth status`
+prints which token is active and what scopes it carries; read it before assuming
+the command is at fault.
 
 ## Adding a computer provider
 
@@ -143,6 +181,24 @@ throw when the key is missing.
 
 Present tense, explain the why in the body when it is not obvious. No emoji, no
 Conventional Commits ceremony.
+
+**Say what changed for the person affected, not which files moved.** A reader
+scanning `git log` is asking "does this touch me?" -- a subject naming the symptom
+answers that, and one naming the module does not. Be specific enough that the
+subject is useless for any other commit: a number, a symptom, a count. If the
+subject cannot carry the reason, the body does.
+
+Worked examples, all real:
+
+    Stop losing 325 MB every time a destroy fails quietly
+    Name what holds the port, and stop four tests flaking under load
+    docs: stop claiming a streamable HTTP transport that does not exist
+
+Not `Update CHANGELOG`, not `chore: various fixes`, not `fix: bug in runtime`.
+One concern per commit.
+
+The fullest sample of the style is `git log history/pre-launch` -- the 19 pre-launch
+commits, which `main`'s squashed history does not preserve.
 
 ## Reference
 
