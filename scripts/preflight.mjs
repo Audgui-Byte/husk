@@ -55,6 +55,47 @@ async function readPkg(dir) {
   return JSON.parse(await readFile(join(root, 'packages', dir, 'package.json'), 'utf8'));
 }
 
+/**
+ * ORDER is checked below for being dependency-correct. This checks that the
+ * release actually uses it.
+ *
+ * `release.yml` publishes with its own hardcoded `for pkg in ...` loop. Today
+ * the two lists agree; nothing makes them. Add a package to one and not the
+ * other and the release publishes in the wrong order or skips a package, and
+ * because every cross-workspace dependency is pinned to an exact version, a
+ * dependent published before its dependency is a hard `notarget` for whoever
+ * installs it next. npm has no undo, so the recovery is another release.
+ *
+ * Of everything in this script, this is the check guarding the only step with
+ * no rollback.
+ */
+async function checkReleaseOrder() {
+  let yml;
+  try {
+    yml = await readFile(join(root, '.github', 'workflows', 'release.yml'), 'utf8');
+  } catch {
+    bad('.github/workflows/release.yml is missing -- nothing publishes');
+    return;
+  }
+  const m = /for pkg in ([a-z0-9 -]+); do/.exec(yml);
+  if (!m) {
+    bad('release.yml has no `for pkg in ...` publish loop -- has the publish step been rewritten?');
+    return;
+  }
+  const loop = m[1].trim().split(/\s+/);
+  if (JSON.stringify(loop) === JSON.stringify(ORDER)) {
+    ok(`release.yml publishes in the same order (${ORDER.length} packages)`);
+    return;
+  }
+  const missing = ORDER.filter((p) => !loop.includes(p));
+  const extra = loop.filter((p) => !ORDER.includes(p));
+  if (missing.length) bad(`release.yml never publishes: ${missing.join(', ')}`);
+  if (extra.length) bad(`release.yml publishes packages that are not in ORDER: ${extra.join(', ')}`);
+  if (!missing.length && !extra.length) {
+    bad(`release.yml publishes in a different order than ORDER\n          ORDER: ${ORDER.join(' ')}\n          yml:   ${loop.join(' ')}`);
+  }
+}
+
 console.log('\nhusk publish preflight\n');
 
 // ---------------------------------------------------------------- packages
@@ -64,6 +105,8 @@ const dirs = (await readdir(join(root, 'packages'), { withFileTypes: true }))
   .map((d) => d.name);
 
 const missing = dirs.filter((d) => !ORDER.includes(d));
+await checkReleaseOrder();
+
 if (missing.length) bad(`not in the publish order, so they would never ship: ${missing.join(', ')}`);
 else ok(`${dirs.length} packages, all in the publish order`);
 
@@ -95,6 +138,8 @@ if (!failures) ok('workspace dependencies are pinned and correctly ordered');
 // ------------------------------------------------------------------ files
 console.log('\ncontents');
 const failuresBeforePack = failures;
+/** package dir -> the paths npm would publish. Reused by the bin check below. */
+const packedPaths = {};
 for (const dir of ORDER) {
   const p = pkgs[dir];
   if (!p) continue;
@@ -105,6 +150,7 @@ for (const dir of ORDER) {
       maxBuffer: 32 * 1024 * 1024,
     });
     packed = JSON.parse(stdout)[0];
+    packedPaths[dir] = new Set(packed.files.map((f) => f.path));
   } catch (e) {
     bad(`${p.name}: npm pack failed -- ${String(e.message).split('\n')[0]}`);
     continue;
@@ -119,6 +165,46 @@ for (const dir of ORDER) {
 // loop that can fail is exactly the kind of reassuring lie this script exists
 // to catch in other things.
 if (failures === failuresBeforePack) ok('every package packs a built dist');
+
+// ------------------------------------------------------------------- bins
+/**
+ * Run every published `bin` and require it to say something.
+ *
+ * 0.1.1 shipped a cli whose bin was packed, carried a shebang, and did nothing:
+ * it pointed at a wrapper, and the guard in the real entry compared
+ * `process.argv[1]` to `import.meta.url`, which through a wrapper can never
+ * match. Exit 0, no output, every platform. Nothing here or in the test suite
+ * had an opinion about it, because everything tested the module and not the bin.
+ *
+ * So this does not inspect the file, it executes it. `--help` needs no daemon,
+ * no API key and no network.
+ *
+ * Either stream counts. `husk-mcp` prints its help on stderr on purpose, because
+ * its stdout carries the JSON-RPC protocol and a stray byte there kills the
+ * client. The question here is whether the bin reached its entry point at all.
+ */
+console.log('\nbinaries');
+const failuresBeforeBins = failures;
+for (const dir of ORDER) {
+  const pkg = pkgs[dir];
+  if (!pkg?.bin) continue;
+  for (const [name, target] of Object.entries(pkg.bin)) {
+    if (!packedPaths[dir]?.has(target.replace(/^\.\//, ''))) {
+      bad(`${pkg.name}: bin "${name}" points at ${target}, which is not in the published files`);
+      continue;
+    }
+    try {
+      const { stdout, stderr } = await rawRun(process.execPath, [join(root, 'packages', dir, target), '--help'], {
+        timeout: 30_000,
+      });
+      if (stdout.trim() || stderr.trim()) ok(`${name} reaches its entry point`);
+      else bad(`${pkg.name}: "${name} --help" exited 0 and printed nothing -- the bin never reaches its entry point`);
+    } catch (e) {
+      bad(`${pkg.name}: "${name} --help" failed -- ${String(e.message).split('\n')[0]}`);
+    }
+  }
+}
+if (failures === failuresBeforeBins) ok('every published bin runs');
 
 // --------------------------------------------------------------- registry
 console.log('\nregistry');
@@ -139,10 +225,10 @@ try {
   const { stdout } = await run('npm', ['whoami']);
   ok(`authenticated as ${stdout.trim()}`);
   try {
-    await run('npm', ['access', 'list', 'packages', '@husk']);
-    ok('the @husk scope is reachable with these credentials');
+    await run('npm', ['access', 'list', 'packages', '@husk-ai']);
+    ok('the @husk-ai scope is reachable with these credentials');
   } catch {
-    warn('cannot read the @husk scope -- create the org, or check the token has write access to it');
+    warn('cannot read the @husk-ai scope -- create the org, or check the token has write access to it');
   }
 } catch {
   warn('not logged in (`npm login`), so scope access could not be checked');
