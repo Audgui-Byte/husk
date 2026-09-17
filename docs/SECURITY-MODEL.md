@@ -44,12 +44,12 @@ directory, your SSH keys, your Docker socket, or your other containers.
 
 | control | what it stops |
 | --- | --- |
-| path jail | every filesystem call resolves through `realpath` and is rejected if the target leaves the workspace — including via a symlink created inside it |
+| path jail (file tools) | every file-tool call resolves through `realpath` and is rejected if the target leaves the workspace — including via a symlink created inside it. Shell commands are **not** path-confined: they start in the workspace, but absolute host paths and `..` reach whatever your user reaches |
 | environment scrub | `ANTHROPIC_API_KEY`, `AWS_*`, `*_TOKEN`, `*_SECRET` and everything else not on a small allow-list never reach the process |
 | command policy | a short list of unrecoverable commands (`rm -rf /`, `mkfs`, `dd of=/dev/sda`, `curl … \| sh`, `sudo`, fork bombs) is refused |
 | output caps | a runaway process cannot exhaust memory through captured output |
 | process-tree kill | a timeout kills the whole process group, not just the shell |
-| mount namespace (WSL2) | `/work` is bind-mounted per exec inside `unshare -mr`, so two computers cannot see each other's files |
+| mount namespace (WSL2) | `/work` is bind-mounted per exec inside `unshare -mr`, so the `/work` an agent sees is always this computer's workspace |
 
 What it does **not** stop: the agent shares your kernel, your network, and your user
 account. It can reach anything your user can reach that is not specifically blocked. The

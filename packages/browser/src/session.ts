@@ -291,11 +291,21 @@ export class BrowserSession {
       `curl -sf --max-time 2 -o /dev/null http://127.0.0.1:${port}/json/version && exit 0; ` +
       `sleep 0.5; done; exit 1`;
 
-    const ready = await this.computer.exec({ cmd, timeoutSec: 120 });
+    // The poll is 80 x (0.5s sleep + an instantly-refused connect), about 40s on
+    // a machine where Chromium simply never comes up. 90s covers a listener that
+    // accepts and wedges (each curl paying its full --max-time) with the exec
+    // kill as the hard backstop, so a failed launch is always bounded.
+    const ready = await this.computer.exec({ cmd, timeoutSec: 90 });
 
     if (ready.exitCode !== 0) {
       const log = await this.computer.readTextFile(LOG_PATH, 4000).catch(() => '');
-      throw new HuskError('E_COMPUTER_FAILED', 'Chromium started but never opened its debugging port', {
+      // A browser that never opened its port is still running, and close() only
+      // knows how to kill a port this method returned. Reap it here or every
+      // failed launch leaks one.
+      await this.computer
+        .exec({ cmd: `pkill -f -- "--remote-debugging-port=${port}" || true`, timeoutSec: 15 })
+        .catch(() => undefined);
+      throw new HuskError('E_COMPUTER_FAILED', 'Chromium started but never opened its debugging port within 40 seconds', {
         hint: 'the log is in details -- a missing shared library or a stale singleton lock in the profile are the usual causes',
         details: { port, log: log.slice(-2000) },
       });

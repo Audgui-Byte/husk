@@ -24,7 +24,7 @@ import {
 } from './prompts.js';
 import type { Candidate } from './prompts.js';
 import type { ChatLike } from './chat.js';
-import { redactDistilled } from './redactor.js';
+import { redactDistilled, redactText } from './redactor.js';
 import {
   containsHarnessArtifact,
   isScaffoldingOnly,
@@ -503,7 +503,10 @@ export function distillHeuristic(transcript: Transcript, opts: HeuristicOptions 
     ? `${identityRule.text.replace(/^\s*(so|ok|okay)[,\s]+/i, '').trim()}`
     : `You are an assistant distilled from a real working session about ${subject}.`;
 
-  const name = slug(transcript.title ?? `${transcript.source}-bot`, 48) || 'husk-bot';
+  // Scrub before slugging: a slug is derived text, and a credential in the
+  // title would otherwise survive into the bot's name and filename.
+  const name =
+    slug(transcript.title ? redactText(transcript.title).text : `${transcript.source}-bot`, 48) || 'husk-bot';
   const description = clampText(
     transcript.title ?? `Distilled from a ${transcript.source} transcript with ${messages.length} messages.`,
     240,
@@ -517,7 +520,10 @@ export function distillHeuristic(transcript: Transcript, opts: HeuristicOptions 
   if (!rules.length) notes.push('No recurring standing instructions found. The persona is topic-only.');
   if (!knowledge.length) notes.push('No durable user-supplied facts found worth carrying as knowledge.');
   if (!examples.length) notes.push('No uncorrected user/assistant exchange was clean enough to use as an example.');
-  if (!tools.suggested.length) notes.push('No tool use observed; the bot is configured without tools.');
+  // Mirror normaliseTools: an empty observation list becomes `tools: [files]`
+  // in the spec, so the note must say that rather than claim no tools.
+  if (!tools.suggested.length && !tools.needsComputer)
+    notes.push('No tool use observed; the husk is configured with the default files toolkit.');
   if (tools.raw.some((t) => IGNORED_TOOLS.test(t)))
     notes.push('Orchestration tools (Task, TodoWrite, ...) were observed but are not portable to a husk.');
   notes.push('Heuristic distillation: no model was used. Review the persona before shipping.');
@@ -666,7 +672,7 @@ function mergeLocally(candidates: Candidate[], fallback: DistilledAgent, tools: 
   const named = candidates.find((c) => c.name.trim().length > 0);
   return {
     ...fallback,
-    ...(named ? { name: slug(named.name, 48) } : {}),
+    ...(named ? { name: slug(redactText(named.name).text, 48) } : {}),
     persona: buildPersona(fallback.persona.split('\n')[0] ?? '', rules, tools),
     knowledge: knowledge.length ? knowledge : fallback.knowledge,
     examples: examples.length ? examples : fallback.examples,
@@ -740,7 +746,7 @@ export async function distillWithModel(
     if (!parsed.success) throw new Error('merge did not validate');
     const m = parsed.data;
     merged = {
-      name: slug(m.name || heuristic.name, 48),
+      name: slug(redactText(m.name || heuristic.name).text, 48),
       description: clampText(m.description || heuristic.description, 240).text,
       persona: m.persona.trim() || buildPersona(heuristic.persona.split('\n')[0] ?? '', unionRules(candidates), tools),
       knowledge: m.knowledge.filter((k) => isUsableKnowledge(k.title, k.content)).slice(0, 8),

@@ -67,8 +67,9 @@ or, with no Docker running:
 
 ```
 [husk] local computer cmp_8v9z on real Linux via wsl:Ubuntu. This is a guarded working
-directory, NOT a sandbox: /work is jailed and destructive commands are refused, but it
-shares the host kernel and network. Start Docker for real isolation.
+directory, NOT a sandbox: file tools are confined to /work and destructive commands are
+refused, but shell commands can still reach anything your user can on the host --
+filesystem, kernel and network. Keep secrets and untrusted input out of it.
 ```
 
 A model that believes it is sandboxed when it is not makes worse decisions than one that

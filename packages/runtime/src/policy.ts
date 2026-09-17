@@ -141,6 +141,199 @@ export async function assertInJail(hostPath: string, map: JailMap): Promise<void
 }
 
 // ---------------------------------------------------------------------------
+// Guest-path rewriting for shells without a real /work
+// ---------------------------------------------------------------------------
+
+type QuoteState = 'normal' | 'single' | 'double';
+
+/** Characters treated as part of one unquoted path token. `$`, `~`, quotes and
+ * shell metacharacters all terminate the token: expansions must stay outside the
+ * replacement so they still expand. */
+const PATH_TOKEN_CHAR = /^[A-Za-z0-9_@%+=.,/-]$/;
+
+/** A guest path is only recognised at the start of a shell word. */
+function isWordBoundary(ch: string | undefined): boolean {
+  return ch === undefined || /[\s()|;&<>=:,`'"{ }]/.test(ch);
+}
+
+function escapeHostPath(host: string, state: QuoteState): string {
+  if (state === 'single') return host.replace(/'/g, `'\\''`);
+  if (state === 'double') return host.replace(/([\\"$`])/g, '\\$1');
+  if (/^[A-Za-z0-9_@%+=:,./-]+$/.test(host)) return host;
+  return `'${host.replace(/'/g, `'\\''`)}'`;
+}
+
+/** A heredoc whose body has not started yet. `<<-` lets the closing word be
+ * indented with tabs. */
+interface PendingHeredoc {
+  word: string;
+  stripTabs: boolean;
+}
+
+/**
+ * The delimiter word after `<<`, and where it ends.
+ *
+ * Quoting the word changes whether the shell expands the body; it does not
+ * change where the body ends, and we never expand, so `<<EOF`, `<<'EOF'` and
+ * `<<"EOF"` are all read to the same terminator.
+ */
+function readHeredocWord(script: string, start: number): { word: string; end: number } {
+  const q = script[start];
+  if (q === `'` || q === '"') {
+    const close = script.indexOf(q, start + 1);
+    if (close === -1) return { word: '', end: start };
+    return { word: script.slice(start + 1, close), end: close + 1 };
+  }
+  let j = start;
+  while (j < script.length && /[A-Za-z0-9_.-]/.test(script[j]!)) j++;
+  return { word: script.slice(start, j), end: j };
+}
+
+/** The guest prefix at position `i`, or null when this is a lookalike such as
+ * `/workshop` or `example.com/work`. */
+function guestPrefixAt(script: string, i: number): string | null {
+  for (const prefix of [GUEST_ROOT, GUEST_TMP]) {
+    if (!script.startsWith(prefix, i)) continue;
+    // A '.' may be prose punctuation (`look in /work.`); the toHostPath check on
+    // the trimmed token is what keeps a real lookalike like `/work.txt` untouched.
+    const next = script[i + prefix.length];
+    if (next === undefined || next === '/' || next === '.' || !PATH_TOKEN_CHAR.test(next)) return prefix;
+  }
+  return null;
+}
+
+/**
+ * Rewrite guest-absolute paths in a shell script to their host equivalents.
+ *
+ * The WSL exec path gives the agent a real `/work` with a per-exec bind mount.
+ * The plain posix shell cannot do that portably -- unprivileged user namespaces
+ * are not enabled everywhere and macOS has none -- so the script's absolute
+ * guest paths are mapped before the command runs, with the working directory
+ * already set to the workspace. Without this, the documented contract ("write
+ * a script to /work, then run it") broke on exactly the provider everyone gets
+ * by default: file tools translated `/work`, the shell did not.
+ *
+ * The mapping is lexical and quote-aware:
+ *
+ *  - A path is only recognised at a word boundary, so `https://x/work` and
+ *    `/workshop` are left alone.
+ *  - Inside single quotes the replacement is literal; inside double quotes the
+ *    host specials are backslash-escaped; elsewhere it is shell-quoted.
+ *  - Trailing slashes are preserved, so `/work/$f` still concatenates correctly.
+ *  - A token that would escape the jail (`/work/../../etc/passwd`) is passed
+ *    through unchanged. `/work` does not exist in this mode, so it fails
+ *    harmlessly instead of being "helpfully" repointed at the host.
+ */
+export function rewriteGuestPaths(script: string, map: JailMap): string {
+  let out = '';
+  let state: QuoteState = 'normal';
+  let prev: string | undefined;
+  let i = 0;
+  const pending: PendingHeredoc[] = [];
+
+  while (i < script.length) {
+    const c = script[i]!;
+
+    // An escaped character is never a quote or a boundary marker.
+    if (c === '\\' && state !== 'single') {
+      out += c + (script[i + 1] ?? '');
+      prev = script[i + 1] ?? c;
+      i += 2;
+      continue;
+    }
+
+    // `<<WORD` opens a heredoc. Remember the terminator and keep scanning the
+    // rest of the line -- `cat <<EOF > /work/out.txt` still has a real path on
+    // it. `<<<` is a here-string, whose operand is an ordinary word.
+    if (
+      state === 'normal' &&
+      c === '<' &&
+      script[i + 1] === '<' &&
+      script[i + 2] !== '<' &&
+      // A heredoc needs a body, so a script with no newline left cannot have
+      // one. This is also what keeps `$(( a << b ))` from being misread.
+      script.indexOf('\n', i) !== -1
+    ) {
+      let j = i + 2;
+      let stripTabs = false;
+      if (script[j] === '-') { stripTabs = true; j++; }
+      while (script[j] === ' ' || script[j] === '\t') j++;
+      const { word, end } = readHeredocWord(script, j);
+      if (word) {
+        pending.push({ word, stripTabs });
+        out += script.slice(i, end);
+        prev = script[end - 1];
+        i = end;
+        continue;
+      }
+    }
+
+    // The body of a heredoc is data, not script. Copy it through untouched:
+    // rewriting it would change the bytes the agent meant to write, and a stray
+    // apostrophe in prose would otherwise flip `state` for the rest of the run.
+    if (c === '\n' && pending.length > 0) {
+      out += c;
+      i++;
+      for (const h of pending.splice(0)) {
+        while (i < script.length) {
+          const nl = script.indexOf('\n', i);
+          const lineEnd = nl === -1 ? script.length : nl;
+          const line = script.slice(i, lineEnd);
+          out += script.slice(i, nl === -1 ? script.length : nl + 1);
+          i = nl === -1 ? script.length : nl + 1;
+          if ((h.stripTabs ? line.replace(/^\t+/, '') : line) === h.word) break;
+        }
+      }
+      // The next line starts a fresh word, and quotes never span a heredoc.
+      prev = '\n';
+      state = 'normal';
+      continue;
+    }
+
+    if (state === 'normal' && c === "'") { state = 'single'; out += c; prev = c; i++; continue; }
+    if (state === 'normal' && c === '"') { state = 'double'; out += c; prev = c; i++; continue; }
+    if (state === 'single' && c === "'") { state = 'normal'; out += c; prev = c; i++; continue; }
+    if (state === 'double' && c === '"') { state = 'normal'; out += c; prev = c; i++; continue; }
+
+    if (c === '/' && isWordBoundary(prev) && guestPrefixAt(script, i) !== null) {
+      let j = i;
+      while (j < script.length && PATH_TOKEN_CHAR.test(script[j]!)) j++;
+      // Prose punctuation is not part of the path: `look in /work.`
+      let end = j;
+      while (end > i && script[end - 1] === '.') end--;
+      const token = script.slice(i, end);
+      const trailing = script.slice(end, j);
+
+      let host: string | null = null;
+      try {
+        host = toHostPath(token, map);
+      } catch {
+        // Escapes the jail or names neither guest root: leave it for the shell,
+        // where the missing /work makes it fail on its own.
+      }
+      if (host !== null) {
+        // toHostPath normalises trailing slashes away; the shell concatenates
+        // what follows verbatim (`/work/$f`), so put them back.
+        const slashes = /\/+$/.exec(token)?.[0] ?? '';
+        out += escapeHostPath(host, state) + slashes;
+      } else {
+        out += token;
+      }
+      out += trailing;
+      prev = script[j - 1] ?? prev;
+      i = j;
+      continue;
+    }
+
+    out += c;
+    prev = c;
+    i++;
+  }
+
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Environment scrubbing
 // ---------------------------------------------------------------------------
 

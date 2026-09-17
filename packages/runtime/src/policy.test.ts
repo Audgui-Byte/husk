@@ -12,6 +12,7 @@ import {
   isHostAllowed,
   isInternalHost,
   normaliseGuestPath,
+  rewriteGuestPaths,
   scrubEnv,
   shellQuote,
   toGuestPath,
@@ -94,6 +95,114 @@ describe('assertInJail', () => {
       return; // Windows without developer mode cannot create symlinks; nothing to assert.
     }
     await expect(assertInJail(join(link, 'x'), jail)).rejects.toThrowError(/symlink/);
+  });
+});
+
+// `toHostPath` resolves through `node:path`, so a posix JailMap becomes
+// `C:\host\root\...` on Windows and every expectation below would have to be
+// written twice. The function is only reached on the `/bin/sh` branch, which a
+// Windows host never takes -- it gets WSL or cmd.exe -- so posix is the only
+// platform where this behaviour exists to be asserted.
+describe.skipIf(process.platform === 'win32')('rewriteGuestPaths', () => {
+  // Paths with a space exercise the quoting branches; the plain map covers the rest.
+  const plain: JailMap = { root: '/host/root', tmp: '/host/tmp' };
+  const spaced: JailMap = { root: '/host/work root', tmp: '/host/tmp dir' };
+
+  it('maps the documented /work contract onto the workspace the shell runs in', () => {
+    expect(rewriteGuestPaths('python3 /work/scrape.py', plain)).toBe('python3 /host/root/scrape.py');
+    expect(rewriteGuestPaths('cat /work/a > /tmp/b', plain)).toBe('cat /host/root/a > /host/tmp/b');
+    expect(rewriteGuestPaths('cd /work && ls', plain)).toBe('cd /host/root && ls');
+    expect(rewriteGuestPaths('sh /tmp/husk-setup.sh', plain)).toBe('sh /host/tmp/husk-setup.sh');
+  });
+
+  it('shell-quotes a host path that needs it', () => {
+    expect(rewriteGuestPaths('python3 /work/scrape.py', spaced)).toBe(
+      "python3 '/host/work root/scrape.py'",
+    );
+    expect(rewriteGuestPaths('cd /work', spaced)).toBe("cd '/host/work root'");
+  });
+
+  it('rewrites inside quotes without breaking them', () => {
+    expect(rewriteGuestPaths("echo '/work/a'", plain)).toBe("echo '/host/root/a'");
+    expect(rewriteGuestPaths('echo "/work/a"', spaced)).toBe('echo "/host/work root/a"');
+    // A quoted path with a space in the guest name stays one word after mapping.
+    expect(rewriteGuestPaths('cat "/work/my file"', plain)).toBe('cat "/host/root/my file"');
+  });
+
+  it('escapes host characters that are special inside double quotes', () => {
+    const map: JailMap = { root: '/ho$st/`root`', tmp: '/host/tmp' };
+    expect(rewriteGuestPaths('cat "/work/a"', map)).toBe('cat "/ho\\$st/\\`root\\`/a"');
+  });
+
+  it('leaves lookalikes and prose alone', () => {
+    expect(rewriteGuestPaths('ls /workshop/x', plain)).toBe('ls /workshop/x');
+    expect(rewriteGuestPaths('curl https://example.com/work/x', plain)).toBe(
+      'curl https://example.com/work/x',
+    );
+    expect(rewriteGuestPaths('ls /tmpish', plain)).toBe('ls /tmpish');
+    expect(rewriteGuestPaths('echo look in /work.', plain)).toBe('echo look in /host/root.');
+  });
+
+  it('does not repoint a path that escapes the jail', () => {
+    // /work does not exist in this mode, so the untouched path fails harmlessly
+    // rather than being aimed at the host file it names.
+    expect(rewriteGuestPaths('cat /work/../../etc/passwd', plain)).toBe('cat /work/../../etc/passwd');
+  });
+
+  it('keeps expansions outside the replacement so they still expand', () => {
+    expect(rewriteGuestPaths('echo hi > /work/$f', plain)).toBe('echo hi > /host/root/$f');
+    expect(rewriteGuestPaths('FILE=/work/a.txt cat "$FILE"', plain)).toBe(
+      'FILE=/host/root/a.txt cat "$FILE"',
+    );
+  });
+
+  it('preserves a trailing slash on the guest root', () => {
+    expect(rewriteGuestPaths('ls /work/', plain)).toBe('ls /host/root/');
+  });
+
+  it('leaves relative paths and host paths untouched', () => {
+    expect(rewriteGuestPaths('cd sub && cat a.txt', plain)).toBe('cd sub && cat a.txt');
+    expect(rewriteGuestPaths('head -n 1 /etc/passwd', plain)).toBe('head -n 1 /etc/passwd');
+  });
+});
+
+/**
+ * Heredoc bodies are data, not paths the shell resolves.
+ *
+ * `cat > /work/notes.md <<EOF` is how an agent writes a file, and the most
+ * common thing it writes about is the workspace. Rewriting inside the body
+ * changes the bytes that land on disk, and an apostrophe in ordinary prose
+ * ("don't") flips the quote tracker for the rest of the script.
+ *
+ * Derived expectations rather than literals, so this runs on Windows too --
+ * the point is which spans change, not what a host path looks like.
+ */
+describe('rewriteGuestPaths and heredocs', () => {
+  const map: JailMap = { root: resolve('/ws/root'), tmp: resolve('/ws/tmp') };
+
+  it('rewrites the redirect target but not the body', () => {
+    const script = ['cat > /work/notes.md <<EOF', 'Files live in /work', 'EOF'].join('\n');
+    const [head, ...body] = rewriteGuestPaths(script, map).split('\n');
+
+    expect(head).toContain(toHostPath('/work/notes.md', map));
+    expect(body.join('\n')).toBe('Files live in /work\nEOF');
+  });
+
+  it('leaves the body alone when the delimiter is quoted', () => {
+    const script = ["cat > /work/run.sh <<'EOF'", 'echo hi > /work/out.txt', 'EOF'].join('\n');
+    const [, ...body] = rewriteGuestPaths(script, map).split('\n');
+    expect(body.join('\n')).toBe('echo hi > /work/out.txt\nEOF');
+  });
+
+  it('does not let an apostrophe in the body desynchronise later quoting', () => {
+    // `don't` must not put the scanner in single-quote state, where a host
+    // path with a space would be emitted unquoted and split into two words.
+    const spaced: JailMap = { root: resolve('/ws/work root'), tmp: resolve('/ws/tmp') };
+    const script = ['cat > /work/a.md <<EOF', "don't forget", 'EOF', 'cat /work/b.txt'].join('\n');
+    const last = rewriteGuestPaths(script, spaced).split('\n').at(-1) as string;
+
+    // However it is quoted, the path must survive as a single shell word.
+    expect(last).toMatch(/^cat (".*"|'.*')$/);
   });
 });
 

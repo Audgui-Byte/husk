@@ -194,6 +194,41 @@ describe('distillHeuristic', () => {
     expect(agentText(secretive)).not.toContain('C:\\Users\\bob');
   });
 
+  it('does not leak a title secret into the generated name', () => {
+    const key = `sk-ant-api03-${'A'.repeat(40)}`;
+    const agent = distillHeuristic(
+      t(
+        [
+          { role: 'user', content: 'You are a helper. Remember the deploy key I pasted.' },
+          { role: 'assistant', content: 'Noted, I will keep it safe.' },
+        ],
+        { title: `Use key ${key}` },
+      ),
+    );
+    expect(agent.name).not.toContain('sk-ant');
+    expect(agent.name).not.toContain('aaa');
+    expect(agentText(agent)).not.toContain(key);
+  });
+
+  it('never claims no tools while the spec lists them', () => {
+    const agent = distillHeuristic(
+      t([
+        { role: 'user', content: 'You are a helper. Explain closures simply.' },
+        { role: 'assistant', content: 'A closure is a function that remembers its scope.' },
+      ]),
+    );
+    const spec = toSpec(agent);
+    // normaliseTools always emits at least the files toolkit; the notes must
+    // agree with the spec the user is looking at.
+    expect(spec.tools.length).toBeGreaterThan(0);
+    for (const note of agent.notes) {
+      expect(note).not.toMatch(/configured without tools/);
+      if (/No tool use observed/.test(note)) {
+        expect(note).toContain(spec.tools[0] as string);
+      }
+    }
+  });
+
   it('picks up the model the transcript ran on', () => {
     const withModel = distillHeuristic(t(RUNBOOK.messages, { meta: { model: 'claude-opus-5' } }));
     expect(withModel.suggestedModel).toBe('opus');

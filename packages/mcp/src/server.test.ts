@@ -39,6 +39,15 @@ describe('the note the model reads first', () => {
     expect(note).toMatch(/real Linux via Ubuntu/);
   });
 
+  it('does not claim the shell is confined when it is not', () => {
+    // Shell commands on the local provider can read /etc/passwd and write
+    // outside the workspace. "/work is jailed" told the model otherwise.
+    const note = isolationNote(info('local', { 'husk.shell': 'posix' }));
+    expect(note).not.toMatch(/jail/i);
+    expect(note).toMatch(/file tools are confined to \/work/);
+    expect(note).toMatch(/shell commands can still reach/);
+  });
+
   describe('on a Windows host that could not give it Linux', () => {
     const broken = isolationNote(
       info('local', { 'husk.shell': 'windows', 'husk.degradation': 'wsl-broken' }),

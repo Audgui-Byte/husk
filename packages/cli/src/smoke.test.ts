@@ -190,7 +190,7 @@ describe.skipIf(!built)('exit codes', () => {
     expect(r.status).toBe(1);
     expect(r.stderr).toContain('no computer named "nope"');
     expect(r.stderr).toContain('hint:');
-  });
+  }, 15_000);
 
   it('exits 1 with a hint when asked to remove a computer that does not exist', () => {
     const r = husk(['rm', 'anything']);

@@ -48,6 +48,66 @@ async function codeOf(fn: () => Promise<unknown>): Promise<string> {
   }
 }
 
+describe('a failed Chromium launch', () => {
+  it('is bounded, reports the browser log, and reaps the failed process', async () => {
+    const info = {
+      id: 'browser-failure',
+      name: 'browser-failure',
+      provider: 'docker',
+      state: 'running',
+      image: 'none',
+      workdir: '/work',
+      createdAt: '',
+      lastUsedAt: '',
+      spec: { network: { mode: 'full' } },
+    } as ComputerInfo;
+    const calls: Array<{ cmd: string; timeoutSec?: number }> = [];
+    const computer = {
+      id: info.id,
+      info,
+      async exec(input: { cmd: string; timeoutSec?: number }): Promise<ExecResult> {
+        calls.push(input);
+        if (input.cmd.includes('command -v chromium')) {
+          return { exitCode: 0, stdout: '/usr/bin/chromium\n', stderr: '', durationMs: 1, truncated: false, timedOut: false };
+        }
+        if (input.cmd.includes('--version')) {
+          return { exitCode: 0, stdout: 'Chromium 140.0\n', stderr: '', durationMs: 1, truncated: false, timedOut: false };
+        }
+        if (input.cmd.includes('python3 -c "import socket')) {
+          return { exitCode: 0, stdout: '43123\n', stderr: '', durationMs: 1, truncated: false, timedOut: false };
+        }
+        if (input.cmd.includes('for i in $(seq 1 80)')) {
+          return { exitCode: 1, stdout: '', stderr: '', durationMs: 40_000, truncated: false, timedOut: false };
+        }
+        if (input.cmd.includes('pkill -f')) {
+          return { exitCode: 0, stdout: '', stderr: '', durationMs: 1, truncated: false, timedOut: false };
+        }
+        throw new Error(`unexpected command: ${input.cmd}`);
+      },
+      async readTextFile(): Promise<string> {
+        return 'missing libnss3.so';
+      },
+    } as unknown as Computer;
+
+    let caught: unknown;
+    try {
+      await new BrowserSession(computer, { idleTimeoutMs: 0 }).activePage();
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(isHuskError(caught) && caught.code).toBe('E_COMPUTER_FAILED');
+    expect((caught as Error).message).toMatch(/within 40 seconds/);
+    expect(JSON.stringify(caught)).toContain('missing libnss3.so');
+
+    const poll = calls.find((call) => call.cmd.includes('for i in $(seq 1 80)'));
+    expect(poll?.timeoutSec).toBe(90);
+    const cleanup = calls.find((call) => call.cmd.includes('pkill -f'));
+    expect(cleanup?.cmd).toContain('--remote-debugging-port=43123');
+    expect(cleanup?.timeoutSec).toBe(15);
+  });
+});
+
 describe('navigation is subject to the computer’s network policy', () => {
   it('refuses a host outside an egress allow-list before opening a socket', async () => {
     const c = fakeComputer('local', { mode: 'egress', allow: ['example.com'] });
