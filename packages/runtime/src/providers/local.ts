@@ -49,10 +49,24 @@ import {
 
 type ShellKind = 'wsl' | 'posix' | 'windows';
 
-interface ShellPlan {
+/**
+ * Why a Windows host is running commands in `cmd.exe` instead of Linux.
+ *
+ * The two cases have different fixes -- `wsl --install` for a machine that has
+ * no WSL, `wsl --shutdown` for one whose WSL has stopped answering -- and
+ * telling someone to install what they already have is the same defect as
+ * "install Docker" when Docker is running. It is a value rather than a
+ * sentence because three separate places used to re-derive it by pattern
+ * matching the label, and every one of them got it wrong.
+ */
+export type WindowsDegradation = 'wsl-broken' | 'wsl-absent';
+
+export interface ShellPlan {
   kind: ShellKind;
   /** WSL distro name, when kind === 'wsl'. */
   distro?: string;
+  /** Set only when kind === 'windows'. */
+  degradation?: WindowsDegradation;
   label: string;
 }
 
@@ -124,6 +138,7 @@ export function detectShell(force = false): ShellPlan {
   downgradedAt = sawDistro ? Date.now() : undefined;
   cachedShell = {
     kind: 'windows',
+    degradation: sawDistro ? 'wsl-broken' : 'wsl-absent',
     label: sawDistro
       ? 'Windows host shell -- WSL is installed but not responding; commands are NOT Linux'
       : 'Windows host shell (no WSL) -- commands are NOT Linux',
@@ -146,6 +161,40 @@ function wslWorks(distro: string): boolean {
 }
 
 /**
+ * What a Windows user is actually getting, and what to do about it.
+ *
+ * Both return `null` off the degraded path so the caller keeps its own
+ * non-Windows wording in one place.
+ *
+ * The distinction these two draw is the whole point of `degradation`. A
+ * machine with no WSL needs `wsl --install`; a machine whose WSL has stopped
+ * answering already has it, and being told to install it is the "install
+ * Docker" bug wearing a different hat.
+ */
+export function windowsReason(shell: ShellPlan): string | null {
+  if (shell.degradation === 'wsl-broken') {
+    return 'guarded working directory -- WSL is installed but not answering, so commands run in the Windows shell, not Linux';
+  }
+  if (shell.degradation === 'wsl-absent') {
+    return 'guarded working directory -- with no WSL, commands run in the Windows shell, not Linux';
+  }
+  return null;
+}
+
+export function windowsHint(shell: ShellPlan): string | null {
+  // Docker Desktop runs its engine inside WSL2, so on this machine the two are
+  // one failure. Saying "start Docker" to someone whose WSL is down sends them
+  // to a second dead end, which is why the fix comes first and Docker second.
+  if (shell.degradation === 'wsl-broken') {
+    return 'run `wsl --shutdown` and re-run `husk doctor`; if WSL stays down, Docker Desktop is down with it -- both run on WSL2';
+  }
+  if (shell.degradation === 'wsl-absent') {
+    return 'run `wsl --install` for a real Linux shell, or start Docker for actual isolation';
+  }
+  return null;
+}
+
+/**
  * Re-probe and downgrade to the host shell.
  *
  * WSL can die underneath a long-running process. Rather than failing every
@@ -156,6 +205,8 @@ function downgradeFromWsl(reason: string): ShellPlan {
   downgradedAt = Date.now();
   cachedShell = {
     kind: 'windows',
+    // WSL was working a moment ago, so it is present and broken, never absent.
+    degradation: 'wsl-broken',
     label: `Windows host shell -- WSL stopped responding (${reason}); commands are NOT Linux`,
   };
   return cachedShell;
@@ -888,16 +939,10 @@ export class LocalProvider implements ComputerProvider {
     return {
       available: true,
       isolated: false,
-        isolationKind: 'guardrails',
+      isolationKind: 'guardrails',
       version: shell.label,
-      reason:
-        shell.kind === 'windows'
-          ? 'guarded working directory -- and with no WSL, commands run in the Windows shell, not Linux'
-          : 'guarded working directory -- process guardrails, not a sandbox',
-      hint:
-        shell.kind === 'windows'
-          ? 'run `wsl --install` for a real Linux shell, or start Docker for actual isolation'
-          : 'start Docker for kernel-level isolation',
+      reason: windowsReason(shell) ?? 'guarded working directory -- process guardrails, not a sandbox',
+      hint: windowsHint(shell) ?? 'start Docker for kernel-level isolation',
     };
   }
 
