@@ -111,6 +111,16 @@ export interface DoctorProbes {
   >;
   modelProviders(): Promise<ModelProvider[]>;
   orphanedWorkspaces(): Promise<string[]>;
+  /**
+   * Why a Windows host is not giving the agent Linux, or `null` when it is --
+   * on any other platform, and on a Windows machine whose WSL answers.
+   *
+   * Asked of the runtime rather than inferred from the provider's text. The
+   * warning this feeds used to test the version string for `/wsl/i`, and every
+   * label that string can hold contains "WSL", including both of the ones
+   * describing the broken state, so the warning never printed once.
+   */
+  windowsDegradation(): Promise<'wsl-broken' | 'wsl-absent' | null>;
 }
 
 /** The real thing. Imports stay dynamic so `husk --help` does not pay for them. */
@@ -124,6 +134,11 @@ export const liveProbes: DoctorProbes = {
     return mod.defaultProviders();
   },
   orphanedWorkspaces: () => findOrphanedWorkspaces(),
+  async windowsDegradation() {
+    if (process.platform !== 'win32') return null;
+    const { detectShell } = await import('@husk-ai/runtime');
+    return detectShell().degradation ?? null;
+  },
 };
 
 export async function collect(force = false, probes: DoctorProbes = liveProbes): Promise<DoctorReport> {
@@ -163,9 +178,21 @@ export async function collect(force = false, probes: DoctorProbes = liveProbes):
   const major = Number(process.versions.node.split('.')[0] ?? 0);
   if (major < 20) warnings.push(`Node ${process.versions.node} is below the supported floor of 20.10.`);
 
-  if (process.platform === 'win32' && chosen?.name === 'local' && !/wsl/i.test(chosen.version ?? '')) {
+  // One root cause with two faces. Docker Desktop runs its engine inside
+  // WSL2, so a host whose WSL is down loses the isolated provider and the
+  // Linux shell together — and the two failures are reported independently,
+  // several lines apart, as though they were separate problems to solve.
+  const degradation = await probes.windowsDegradation().catch(() => null);
+  if (degradation) {
+    const dockerOnWsl = docker !== undefined && !docker.available;
     warnings.push(
-      'On Windows without WSL, the local provider runs commands in the Windows shell — it is not a Linux computer. `wsl --install` fixes it.',
+      degradation === 'wsl-broken'
+        ? 'WSL is installed but not answering, so the local provider is running commands in the Windows shell — this is not a Linux computer.' +
+            (dockerOnWsl ? ' Docker is unavailable for the same reason: its engine runs inside WSL2.' : '') +
+            ' Try `wsl --shutdown`, then re-run `husk doctor`.'
+        : 'This machine has no WSL, so the local provider runs commands in the Windows shell — it is not a Linux computer.' +
+            (dockerOnWsl ? ' Docker Desktop would also need WSL2.' : '') +
+            ' `wsl --install` fixes it.',
     );
   }
 
@@ -313,7 +340,11 @@ export async function run(argv: string[]): Promise<number> {
     ui.print(`      ${ui.dim(p.description)}`);
     if (p.version) ui.print(`      ${ui.dim('via ' + p.version)}`);
     if (p.reason) ui.print(`      ${p.available ? ui.dim(p.reason) : ui.yellow(p.reason)}`);
-    if (p.hint && !p.available) ui.print(`      ${ui.dim('fix: ' + p.hint)}`);
+    // Printed for an available provider too. `local` is always available and
+    // is exactly the case that needs it: on a Windows host with no working
+    // WSL it reports that commands are not Linux, and its hint is the only
+    // line that says what to do about that.
+    if (p.hint) ui.print(`      ${ui.dim('fix: ' + p.hint)}`);
   }
   ui.print();
 

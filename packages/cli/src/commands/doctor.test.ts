@@ -22,7 +22,10 @@ const probes: DoctorProbes = {
       available: true,
       isolated: false,
       isolationKind: 'guardrails',
-      version: 'wsl:Ubuntu',
+      // The label the real provider emits. The fixture used to say
+      // `wsl:Ubuntu`, a format nothing produces, which is part of why the
+      // Windows warning could be dead for as long as it was.
+      version: 'WSL2 (Ubuntu)',
     },
     {
       name: 'docker',
@@ -37,7 +40,14 @@ const probes: DoctorProbes = {
   ],
   modelProviders: async () => [],
   orphanedWorkspaces: async () => [],
+  windowsDegradation: async () => null,
 };
+
+/** The same machine, with WSL in one of the two states that break it. */
+const onWindows = (degradation: 'wsl-broken' | 'wsl-absent'): DoctorProbes => ({
+  ...probes,
+  windowsDegradation: async () => degradation,
+});
 
 describe('doctor', () => {
   it('names a provider, its isolation, and what husk would pick', async () => {
@@ -75,5 +85,39 @@ describe('doctor', () => {
     // The largest group of users never needs a model: husk mcp supplies the
     // computer and the MCP client brings its own.
     expect(report.warnings.join(' ')).toMatch(/husk mcp` needs no model/);
+  });
+
+  it('says nothing about WSL when the host is not a degraded Windows one', async () => {
+    const report = await collect(false, probes);
+    expect(report.warnings.join(' ')).not.toMatch(/WSL/);
+  });
+
+  it('warns that a Windows host is not a Linux computer', async () => {
+    // This assertion is the point of the change. The warning it covers was
+    // guarded by `!/wsl/i.test(version)`, and every label that field can hold
+    // contains "WSL" -- including both of the ones that describe the broken
+    // state -- so it had never printed for anyone.
+    for (const state of ['wsl-broken', 'wsl-absent'] as const) {
+      const report = await collect(false, onWindows(state));
+      expect(report.warnings.join(' ')).toMatch(/not a Linux computer/);
+    }
+  });
+
+  it('does not tell someone to install the WSL they already have', async () => {
+    const broken = await collect(false, onWindows('wsl-broken'));
+    expect(broken.warnings.join(' ')).toMatch(/wsl --shutdown/);
+    expect(broken.warnings.join(' ')).not.toMatch(/wsl --install/);
+
+    const absent = await collect(false, onWindows('wsl-absent'));
+    expect(absent.warnings.join(' ')).toMatch(/wsl --install/);
+    expect(absent.warnings.join(' ')).not.toMatch(/wsl --shutdown/);
+  });
+
+  it('names WSL as the one reason both the shell and docker are gone', async () => {
+    // The fixture's docker is down. On Windows that is not a coincidence --
+    // its engine runs inside WSL2 -- and two unrelated-looking failures send
+    // someone chasing Docker Desktop when the fix is upstream of both.
+    const report = await collect(false, onWindows('wsl-broken'));
+    expect(report.warnings.join(' ')).toMatch(/engine runs inside WSL2/);
   });
 });
