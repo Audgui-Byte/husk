@@ -93,6 +93,10 @@ them, and `adapters` and `sdk` were shown above `agent` when neither imports it.
   as the only public surface.
 - Workspace deps pin that exact version, never a range and never `workspace:*` — npm
   workspaces links them.
+- Root `overrides` pins `react` and `react-dom` to 19.2.8 and `zod` to 3.25.76, so a
+  transitive dependency cannot pull in a second copy. An override only reaches the
+  workspace, so `apps/docs` and `apps/web` pin React themselves, at the same exact
+  versions — nothing links those two pins to this one.
 - `strict` is on, and so is `noUncheckedIndexedAccess`. Index access yields `T |
   undefined`; handle it, do not blanket-assert.
 - Comments explain *why*. No comment restates the line below it. No section banners.
@@ -114,7 +118,18 @@ Import these from `@husk-ai/core`:
 - `HuskError`, `createLogger`, `paths()`, `ensurePaths()`, `redact()`, `retry()`,
   `clampText()`, `mapLimit()`, `id()`, `slug()`.
 
-If a contract is genuinely wrong, say so in your report — do not silently widen it.
+If a contract is genuinely wrong, say so in a PR or an issue — do not silently widen it.
+
+`GUEST_ROOT = '/work'` is the canonical working directory inside a computer, on every
+provider. It is defined in `packages/runtime/src/policy.ts` and exported from
+`@husk-ai/runtime`. Paths in tool arguments, in the path jail and in a `husk.yaml` all
+resolve against it, so a provider that put the workspace elsewhere would make specs
+provider-specific. Import it rather than writing `/work`.
+
+One copy is unavoidable: `core/src/computer-info.ts` needs the same string and cannot
+import from `runtime`, which sits above it. That copy is `GUEST_WORKDIR`, marked with a
+comment naming its counterpart — and it is not yet one of the drift check's assertions,
+which is the only reason the two could disagree without anyone hearing about it.
 
 ## Model aliases (canonical, used everywhere)
 
