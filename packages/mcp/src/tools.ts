@@ -354,3 +354,43 @@ async function browse(computer: Computer, args: Record<string, unknown>): Promis
   const tail = links ? `\n\nlinks\n${links}` : '';
   return ok(`${head}\n\n${page.text}${tail}`);
 }
+
+/**
+ * The same tools, described for a machine that could not give the agent Linux.
+ *
+ * `TOOLS` above says "your Linux computer" and "run with sh -c", which is true
+ * for every provider except one: a Windows host whose WSL is not working falls
+ * back to `cmd.exe`. Those two sentences are the first thing a model reads
+ * about the machine, and they are read before any tool result can correct
+ * them -- so on that host they are the product's opening lie, and the model
+ * plans around them for the rest of the session.
+ *
+ * The descriptions cannot be conditional at construction time, because nothing
+ * is created until the first tool call and probing the host to find out would
+ * put a `wsl.exe` spawn in the cost of merely installing the server. So the
+ * list starts optimistic, and `tools/list_changed` corrects it the moment a
+ * degraded computer actually exists. A client that ignores the notification is
+ * no worse off than before this change.
+ */
+export function toolsFor(degraded: boolean): ToolDef[] {
+  if (!degraded) return TOOLS;
+  return TOOLS.map((tool) => {
+    if (tool.name !== 'shell') return tool;
+    const properties = (tool.inputSchema.properties ?? {}) as Record<string, { description?: string }>;
+    return {
+      ...tool,
+      description:
+        'Run a shell command on this computer and return its output. This machine is ' +
+        'running cmd.exe on Windows, NOT Linux: POSIX-only commands may be absent, ' +
+        '$VAR does not expand, and single quotes are not quotes. The filesystem ' +
+        'persists across calls within a session.',
+      inputSchema: {
+        ...tool.inputSchema,
+        properties: {
+          ...properties,
+          command: { type: 'string', description: 'The command, run with cmd.exe /c.' },
+        },
+      },
+    };
+  });
+}

@@ -6,7 +6,7 @@ import { HUSK_VERSION, createLogger, quiet } from '@husk-ai/core';
 import type { Computer, ComputerInfo, ComputerSpec, Logger } from '@husk-ai/core';
 import { ComputerManager } from '@husk-ai/runtime';
 import { audited } from '@husk-ai/core';
-import { TOOLS, callTool } from './tools.js';
+import { callTool, toolsFor } from './tools.js';
 
 export interface HuskMcpOptions {
   /**
@@ -45,6 +45,8 @@ export class HuskMcpServer {
   private computer: Computer | undefined;
   private creating: Promise<Computer> | undefined;
   private announced = false;
+  /** Set once a computer exists and turns out not to be Linux. */
+  private degraded = false;
 
   constructor(opts: HuskMcpOptions = {}) {
     this.manager = opts.manager ?? new ComputerManager();
@@ -57,11 +59,15 @@ export class HuskMcpServer {
     this.mcp = new Server(
       { name: 'husk', version: HUSK_VERSION },
       {
-        capabilities: { tools: {} },
+        // `listChanged` is declared because the tool descriptions are not final
+        // at this point: see `announceDegradation`.
+        capabilities: { tools: { listChanged: true } },
         instructions:
-          'Husk gives you a Linux computer. Use `shell` for anything a command line can do; ' +
-          'the filesystem at /work persists across calls in this session. Call `computer_info` ' +
-          'once before assuming a runtime or tool is installed.',
+          'Husk gives you a computer -- on almost every host a Linux container. Use `shell` ' +
+          'for anything a command line can do; the filesystem at /work persists across calls ' +
+          'in this session. Call `computer_info` once before assuming a runtime, a tool or ' +
+          'even a POSIX shell is there: on a Windows host without a working WSL this is ' +
+          'cmd.exe, and the first tool result will say so.',
       },
     );
 
@@ -69,7 +75,7 @@ export class HuskMcpServer {
   }
 
   private registerHandlers(): void {
-    this.mcp.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
+    this.mcp.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: toolsFor(this.degraded) }));
 
     this.mcp.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToolResult> => {
       const { name, arguments: args } = request.params;
@@ -102,6 +108,32 @@ export class HuskMcpServer {
     return isolationNote(computer.info);
   }
 
+  /**
+   * Correct the tool descriptions once the machine turns out not to be Linux.
+   *
+   * The descriptions and the server instructions are fixed before any computer
+   * exists -- nothing is created until the first tool call, and that is a
+   * constraint worth keeping: probing the host at construction would put a
+   * `wsl.exe` spawn into the cost of merely having the server installed.
+   *
+   * So the list starts optimistic and is corrected here, which is what
+   * `notifications/tools/list_changed` is for. A client that ignores it is
+   * exactly as well off as it was before this existed; a client that honours
+   * it re-reads a `shell` description that no longer says "your Linux
+   * computer" or "run with sh -c" on a machine where both are false.
+   *
+   * The instructions cannot be corrected the same way -- they are sent once at
+   * initialize -- so they no longer promise Linux in the first place.
+   */
+  private async announceDegradation(computer: Computer): Promise<void> {
+    if (this.degraded) return;
+    if (!computer.info.spec.labels?.['husk.degradation']) return;
+    this.degraded = true;
+    // Never fatal: a client that does not support the notification must not
+    // take down the tool call that happened to create the machine.
+    await quiet(() => this.mcp.sendToolListChanged());
+  }
+
   /** Create the machine on first use, and only once even under concurrent calls. */
   private async getComputer(): Promise<Computer> {
     if (this.computer) return this.computer;
@@ -113,6 +145,7 @@ export class HuskMcpServer {
       });
       this.log.info(`computer ready: ${c.id} (${c.info.provider})`);
       this.computer = c;
+      await this.announceDegradation(c);
       return c;
     })();
     try {
