@@ -3,7 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { HUSK_VERSION, createLogger, quiet } from '@husk-ai/core';
-import type { Computer, ComputerSpec, Logger } from '@husk-ai/core';
+import type { Computer, ComputerInfo, ComputerSpec, Logger } from '@husk-ai/core';
 import { ComputerManager } from '@husk-ai/runtime';
 import { audited } from '@husk-ai/core';
 import { TOOLS, callTool } from './tools.js';
@@ -99,20 +99,7 @@ export class HuskMcpServer {
 
   /** One honest line about what this machine actually is. */
   private isolationNote(computer: Computer): string {
-    const p = computer.info.provider;
-    if (p === 'docker' || p === 'podman') {
-      return `[husk] ${p} container ${computer.info.id}, isolated from the host. /work persists for this session.`;
-    }
-    if (p === 'local') {
-      const shell = computer.info.spec.labels?.['husk.shell'] ?? 'host';
-      const linux = shell.startsWith('wsl') ? `real Linux via ${shell}` : shell === 'posix' ? 'the host shell' : 'the Windows shell';
-      return (
-        `[husk] local computer ${computer.info.id} on ${linux}. This is a guarded working ` +
-        `directory, NOT a sandbox: /work is jailed and destructive commands are refused, but ` +
-        `it shares the host kernel and network. Start Docker for real isolation.`
-      );
-    }
-    return `[husk] computer ${computer.info.id} on ${p}. /work persists for this session.`;
+    return isolationNote(computer.info);
   }
 
   /** Create the machine on first use, and only once even under concurrent calls. */
@@ -152,6 +139,60 @@ export class HuskMcpServer {
       await quiet(() => this.computer!.destroy());
     }
   }
+}
+
+/**
+ * What the model is told about its machine, before its first tool result.
+ *
+ * The model is the party with the least information and the most at stake. It
+ * cannot run `husk doctor`, it did not choose the provider, and it will act on
+ * whatever this line says -- so this is the only place several facts reach it
+ * at all.
+ *
+ * For a Windows host with no working WSL that fact is not "you are not
+ * sandboxed", it is "your commands are not Linux". A model told it has a Linux
+ * computer opens with `ls -la /work`, gets something cmd.exe said, and retries
+ * variations of a command that was never going to work. Naming the shell is
+ * not enough: "the Windows shell" is a label, and the model needs the
+ * consequence.
+ *
+ * Exported because it is the product's first sentence to its primary consumer
+ * and deserves a test that is not a subprocess.
+ */
+export function isolationNote(info: ComputerInfo): string {
+  const p = info.provider;
+  if (p === 'docker' || p === 'podman') {
+    return `[husk] ${p} container ${info.id}, isolated from the host. /work persists for this session.`;
+  }
+  if (p !== 'local') {
+    return `[husk] computer ${info.id} on ${p}. /work persists for this session.`;
+  }
+
+  const guardrails =
+    'This is a guarded working directory, NOT a sandbox: /work is jailed and destructive ' +
+    'commands are refused, but it shares the host kernel and network.';
+
+  // Set by the local provider when a Windows host could not give it Linux.
+  const degradation = info.spec.labels?.['husk.degradation'];
+  if (degradation) {
+    const fix =
+      degradation === 'wsl-broken'
+        ? 'WSL is installed here but not answering; the user can run `wsl --shutdown` to fix it'
+        : 'the user can run `wsl --install` to fix it';
+    return (
+      `[husk] local computer ${info.id} running on the WINDOWS shell -- this is NOT Linux. ` +
+      `POSIX commands (ls, grep, cat, sed, chmod) are unavailable; use cmd.exe syntax, or ` +
+      `tell the user their computer is degraded rather than working around it -- ${fix}. ` +
+      `Docker is unavailable for the same reason, since its engine runs inside WSL2. ` +
+      `${guardrails}`
+    );
+  }
+
+  const shell = info.spec.labels?.['husk.shell'] ?? 'host';
+  const where = shell.startsWith('wsl:') ? `real Linux via ${shell.slice(4)}` : 'the host shell';
+  return (
+    `[husk] local computer ${info.id} on ${where}. ${guardrails} Start Docker for real isolation.`
+  );
 }
 
 /** The first line of a tool's text output, for the audit log's `error`. */

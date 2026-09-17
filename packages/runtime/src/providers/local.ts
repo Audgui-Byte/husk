@@ -1013,6 +1013,10 @@ export class LocalProvider implements ComputerProvider {
           ...(spec.labels ?? {}),
           ...wslLabels,
           'husk.shell': shell.kind === 'wsl' ? `wsl:${shell.distro}` : shell.kind,
+          // Recorded on the machine, not just reported by `doctor`, because
+          // the agent driving it is the party most misled by a Windows shell
+          // and never sees a doctor report.
+          ...(shell.degradation ? { 'husk.degradation': shell.degradation } : {}),
           'husk.workspace': workspaceRoot,
         },
       },
