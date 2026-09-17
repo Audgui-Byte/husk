@@ -215,17 +215,20 @@ svg {
   grid-column: span 8;
 }
 
-/* Below 1152px every 12-column block collapses to one column. Asymmetry is a
+/* Below 1280px every 12-column block collapses to one column. Asymmetry is a
    wide-viewport affordance; on a phone it is an awkward wrap.
 
-   The threshold is 72rem, not the 64rem it used to be, because at 64rem the
+   The threshold is 80rem. It was 64rem, then 72rem, and both were measured
+   against the fallback mono stack -- JetBrains Mono is wider, so vendoring the
+   real face pushed the same content past the same columns a third time. At
+   64rem the
    split was the thing that broke the content it was splitting: `.col-7` at a
    1024px viewport is 540px, and the widest `husk doctor` line needs 574px at
    13.33px mono. The hero command block did the same, and worse -- 464px of
    `claude mcp add husk ...` in 404px of column, because `.cmd-lg` reached for
    19.2px type at the exact breakpoint the column got narrower. Two columns
    are worth having only where both of them fit. */
-@media (max-width: 71.99rem) {
+@media (max-width: 79.99rem) {
   .grid12 {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -238,7 +241,7 @@ svg {
 /* Source order puts the terminal first in the chat-to-bot block so it sits on
    the left at desktop width; stacked, the heading must come first. Bound to
    the same width as the collapse above -- they describe one layout change. */
-@media (max-width: 71.99rem) {
+@media (max-width: 79.99rem) {
   .order-first-sm {
     order: -1;
   }
@@ -1451,4 +1454,84 @@ table.data tbody tr:hover {
     transform: none;
     transition: none;
   }
+}
+
+/* -- hero object and onboarding steps ---------------------------------------- */
+
+/* The hero is two columns again once there is room for both. Below 72rem the
+   grid collapses (see the grid12 rule above) and the object sits under the
+   copy, where it is still worth having and no longer competing for width with
+   a 19.2px mono command. */
+/* 8/4, not the 7/5 the base rule gives. The copy column carries a 19.2px mono
+   install command; the object is a square that looks right at any size. Giving
+   the object the extra column is how the command ended up truncated at 1152 in
+   the first place. */
+.hero-grid {
+  align-items: center;
+}
+
+.hero-grid .hero-copy {
+  grid-column: span 8;
+}
+
+.hero-grid .hero-figure {
+  grid-column: span 4;
+}
+
+/* aspect-ratio, not min-height. HuskCore's canvas is height: 100%, and 100% of
+   a parent whose height is only a minimum resolves against a height the canvas
+   itself is supposed to determine -- so it collapsed and drew the object at a
+   fraction of the space. A definite box is what `.core-stage` gives it in the
+   Providers section, and the same thing is what it needs here. */
+.hero-object {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 26rem;
+  margin-inline: auto;
+}
+
+@media (max-width: 79.99rem) {
+  .hero-object {
+    max-height: 18rem;
+  }
+}
+
+.steps {
+  list-style: none;
+  margin: var(--space-10) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-6);
+  max-width: var(--measure-prose);
+}
+
+.step {
+  display: grid;
+  grid-template-columns: var(--space-8) 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.step-n {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  line-height: var(--leading-code);
+  color: var(--color-text-accent);
+  border: var(--border-width-hairline) solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  padding-block: var(--space-1);
+}
+
+.step-ask {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.step-what {
+  color: var(--color-text-muted);
+  margin: var(--space-2) 0 0;
 }

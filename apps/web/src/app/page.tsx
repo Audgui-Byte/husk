@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CodeBlock, CommandBlock } from "@/components/CodeBlock";
+import { HeroObject } from "@/components/HeroObject";
 import { Reveal } from "@/components/Reveal";
 import { IsolationViewer } from "@/components/IsolationViewer";
 import { StaticTerminal } from "@/components/StaticTerminal";
 import { TerminalReplay } from "@/components/TerminalReplay";
 import {
   BROWSER_TOOLS,
+  ONBOARDING,
   BROWSER_TOOL_COUNT,
   DISTILL,
   DOCTOR,
@@ -33,8 +35,8 @@ export default function Home() {
         style={{ position: "relative" }}
       >
         <div className="hero-glow" aria-hidden="true" />
-        <div>
-          <div className="hero-copy hero-copy-wide">
+        <div className="grid12 hero-grid">
+          <div className="hero-copy">
             <h1 id="hero-title" className="h-hero">
               Your AI chat gets a real computer of its own.
             </h1>
@@ -72,6 +74,9 @@ export default function Home() {
             </p>
           </div>
 
+          <div className="hero-figure">
+            <HeroObject />
+          </div>
         </div>
 
         {/* The proof, directly under the claim. "A real computer" is a sentence
@@ -240,6 +245,39 @@ export default function Home() {
             </p>
           </div>
         </div>
+      </section>
+
+      {/* ------------------------------------------------------ onboarding */}
+      <section className="container section" aria-labelledby="start-title" id="start">
+        <Reveal>
+          <div className="section-head">
+            <p className="eyebrow">after the one line</p>
+            <h2 id="start-title" className="h-section">
+              Three things to ask it first.
+            </h2>
+            <p className="prose" style={{ marginTop: "var(--space-4)" }}>
+              The install is one line and then nothing tells you what changed.
+              These are the three that show you the computer is real, in the
+              order that makes the point fastest.
+            </p>
+          </div>
+        </Reveal>
+
+        <ol className="steps">
+          {ONBOARDING.map((step, i) => (
+            <Reveal key={step.ask} delayMs={i * 90}>
+              <li className="step">
+                <span className="step-n" aria-hidden="true">
+                  {i + 1}
+                </span>
+                <div>
+                  <p className="step-ask">&ldquo;{step.ask}&rdquo;</p>
+                  <p className="step-what">{step.what}</p>
+                </div>
+              </li>
+            </Reveal>
+          ))}
+        </ol>
       </section>
 
       {/* ------------------------------------------------------- providers */}
