@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CodeBlock, CommandBlock } from "@/components/CodeBlock";
+import { HeroObject } from "@/components/HeroObject";
+import { ScrollCue } from "@/components/ScrollCue";
 import { Reveal } from "@/components/Reveal";
 import { IsolationViewer } from "@/components/IsolationViewer";
 import { StaticTerminal } from "@/components/StaticTerminal";
@@ -33,7 +35,13 @@ export default function Home() {
         aria-labelledby="hero-title"
         style={{ position: "relative" }}
       >
-        <div>
+        {/* Two columns from --bp-lg. The left is what it has always been --
+            headline, lead, the install command, the two buttons, the meta line
+            -- at the width those were measured at. The right is the object.
+            Below --bp-lg the grid is one column and the object goes above the
+            copy, because a 3D scene between a headline and its own install
+            command would be an interruption. */}
+        <div className="hero-grid">
           <div className="hero-copy hero-copy-wide">
             <h1 id="hero-title" className="h-hero">
               Your AI chat gets a real computer of its own.
@@ -71,7 +79,11 @@ export default function Home() {
               Cursor, Zed, or anything speaking MCP
             </p>
           </div>
+
+          <HeroObject />
         </div>
+
+        <ScrollCue />
 
         {/* The proof, directly under the claim. "A real computer" is a sentence
             anyone can write; this is twenty seconds of one running on a laptop
