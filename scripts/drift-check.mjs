@@ -180,6 +180,44 @@ if (!SITES_ONLY) {
   // docs/API.md is the control-plane contract, not a website: the example
   // payload has to show the version the server actually returns.
   contains("docs/API.md", `"version": "${VERSION}"`, bump);
+
+  /* ---------------------------------------------------------------------------
+     Every internal pin, in every dependency group.
+
+     This one is not a duplicated string in prose -- it is eleven manifests
+     naming each other by version, and npm resolves those pins from the registry
+     rather than from this checkout. A stale pin therefore ships: it builds,
+     typechecks and tests green here, where the workspace link satisfies the
+     import, and only a user installing from the registry ever gets the old
+     package.
+
+     Three of them had gone stale by 0.1.3 -- `@husk-ai/mcp`, `@husk-ai/sdk` and
+     `@husk-ai/server`, all still on 0.1.2, all in `optionalDependencies`, which
+     is the group nobody reads. `husk serve` lazy-imports the server, so nothing
+     failed until a fresh `npx @husk-ai/cli` ran a server two releases behind
+     with three known defects in it.
+
+     `dependencies` alone would have missed all three. The group is part of what
+     has to be checked, not part of what is trusted.
+  --------------------------------------------------------------------------- */
+  const GROUPS = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
+  for (const dir of readdirSync(join(ROOT, 'packages'))) {
+    const rel = `packages/${dir}/package.json`;
+    let manifest;
+    try {
+      manifest = JSON.parse(read(rel));
+    } catch {
+      continue;
+    }
+    for (const group of GROUPS) {
+      for (const [dep, range] of Object.entries(manifest[group] ?? {})) {
+        if (!dep.startsWith('@husk-ai/')) continue;
+        const label = `${rel} pins ${dep} at ${VERSION} (${group})`;
+        if (range === VERSION) passes.push(label);
+        else failures.push({ label, hint: `found ${range}; every internal pin moves with the root version` });
+      }
+    }
+  }
 }
 
 /* -----------------------------------------------------------------------------
