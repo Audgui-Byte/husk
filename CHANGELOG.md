@@ -11,47 +11,88 @@ not here.
 
 ## [Unreleased]
 
+### Fixed
+
+- **On Windows without a working WSL, `husk doctor` said nothing useful and sometimes
+  contradicted itself.** The warning written for that case was gated on a test that no
+  reachable state could pass, so it had never printed. The `local` provider reported
+  "with no WSL" even when WSL was installed and simply not responding, directly beneath
+  a line saying the opposite, and told people to `wsl --install` something they already
+  had. The fix that would have helped was never shown at all, because hints only
+  printed for providers reported as unavailable and `local` is always available.
+  `doctor` now distinguishes the two states, gives each its own fix, and says that
+  Docker is down for the same reason — its engine runs inside WSL2.
+- **A model given a degraded Windows computer was told it had Linux.** The first tool
+  result said the machine was "on the Windows shell", which is a label with no
+  consequence attached; the model would still open with `ls -la /work` and then retry
+  variations of a command that could not work. It now says what actually differs —
+  `$VAR` does not expand and `'single quotes'` are not quotes, both silently at exit 0
+  — and that Unix tools may or may not be on `PATH` depending on what else is
+  installed. A command that fails because the shell is `cmd.exe` now carries that
+  reason with it, rather than only at the top of the session.
+
+## [0.1.3] - 2026-09-16
+
+The browser works on Docker again, and husk stops naming things it does not own.
+
+### Fixed
+
+- **`flavor: full` never had a working browser on `docker` or `podman`.** The image it
+  actually landed on was `debian:bookworm`, which ships no Chromium, so the `browser_*`
+  tools on a `full` computer had nothing to drive. It resolves to
+  `mcr.microsoft.com/playwright:v1.59.1-noble` now.
+- **Every flavour tried `ghcr.io/husk-sh/husk-<flavor>` first** — a namespace husk does
+  not own and has never pushed to — so the first pull on every fresh install was a
+  guaranteed 404. It recovered quietly by substituting the public base image, which
+  meant you ran something other than the image your spec named and lost the `huskinfo`
+  script with it. Flavours resolve to a public image outright now, and `HUSK_REGISTRY`
+  turns the old two-step back on as an opt-in mirror.
+- **`husk --version` reported `0.1.0` while you were running 0.1.1.** Four constants
+  carried the version by hand and none were bumped with the manifests, so the CLI,
+  `husk doctor`, `/health`, `/v1/doctor`, the `X-Husk-Version` header and both outbound
+  User-Agent strings all named a release nobody was on.
+- The install instructions named `@husk/mcp`. Nothing is published under that scope and
+  the scope is not ours, so the command 404'd for everyone who copied it. The published
+  name is `@husk-ai/mcp`.
+- `computer_info` did not answer the question its own description tells a model to call
+  it for, so a model asking what was installed had to fall back to probing with shell
+  commands.
+
+### Security
+
+- **Removed every reference to `husk.sh` and the `husk-sh` GitHub organisation.**
+  Neither is ours, and both shipped to npm in 0.1.0, 0.1.1 and 0.1.2. The OpenRouter
+  attribution header sent `http-referer: https://husk.sh`, and four User-Agent strings
+  advertised the same domain to every model provider and every page the browser
+  fetched.
+
+## [0.1.2] - 2026-09-16
+
+### Fixed
+
+- **`husk` exited 0 and printed nothing when installed from npm.** The published `bin`
+  pointed at a wrapper whose entry-point guard never matched through npm's shim, so the
+  command that is the product's entire surface did nothing at all — silently, and with a
+  success exit code, on every install of 0.1.1.
+- `@husk-ai/mcp` documented a streamable HTTP transport it does not implement. The
+  server speaks stdio, and the docs now say only that.
+- The `@husk-ai/sdk` readme linked with `../..`, which npm cannot follow, so every
+  relative link on its package page was broken.
+
 ### Added
 
 - Webhook signature verification tests, covering the replay-window boundary at exactly
   the tolerance and the empty-body case ([#26](https://github.com/Hotragn/husk/pull/26),
   thanks [@EthemKD](https://github.com/EthemKD))
-- `engines: { node: ">=20.10" }` on all eleven packages, so npm refuses an
-  unsupported Node instead of failing at runtime. `repository`, `homepage` and `bugs`
-  are now declared too, which is what makes the npm page link back here.
-
-### Fixed
-
-- **`husk --version` reported `0.1.0` while you were running 0.1.1.** Four constants
-  carried the version by hand and none were bumped with the manifests, so the CLI,
-  `husk doctor`, `/health`, `/v1/doctor`, the `X-Husk-Version` header and both
-  outbound User-Agent strings all named a release nobody was on. A drift check in CI
-  now fails the build if they diverge again.
-- **`flavor: full` never had a working browser on `docker` or `podman`.** The image
-  it actually landed on was `debian:bookworm`, which ships no Chromium, so the
-  `browser_*` tools on a `full` computer had nothing to drive. It resolves to
-  `mcr.microsoft.com/playwright:v1.59.1-noble` now.
-- Every flavour tried `ghcr.io/husk-sh/husk-<flavor>` first — a namespace husk does
-  not own and has never pushed to — so the first pull on every fresh install was a
-  guaranteed 404. It recovered quietly by substituting the public base image, which
-  meant you ran something other than the image your spec named and lost the
-  `huskinfo` script with it. Flavours resolve to a public image outright now, and
-  `HUSK_REGISTRY` turns the old two-step back on as an opt-in mirror.
-- `@husk-ai/mcp` documented a streamable HTTP transport it does not implement. The
-  server speaks stdio, and the docs now say only that.
-- The install instructions named `@husk/mcp`. Nothing is published under that scope
-  and the scope is not ours, so the command 404'd for everyone who copied it. The
-  published name is `@husk-ai/mcp`.
+- `engines: { node: ">=20.10" }` on all eleven packages, so npm refuses an unsupported
+  Node instead of failing at runtime. `repository`, `homepage` and `bugs` are now
+  declared too, which is what makes the npm page link back here.
 
 ### Security
 
-- **Removed every reference to `husk.sh` and the `husk-sh` GitHub organisation.
-  Neither is ours, and both shipped to npm in 0.1.0 and 0.1.1.** The OpenRouter
-  attribution header sent `http-referer: https://husk.sh`, four User-Agent strings
-  advertised the same domain to every model provider and every page the browser
-  fetched, and the security disclosure address was `security@husk.sh` — a mailbox at
-  a domain we do not control, printed in `SECURITY.md` as the place to send
-  vulnerability reports. Disclosures now go through
+- The security disclosure address was `security@husk.sh`, a mailbox at a domain we do
+  not control, printed in `SECURITY.md` as the place to send vulnerability reports.
+  Disclosures now go through
   [GitHub private vulnerability reporting](https://github.com/Hotragn/husk/security/advisories/new),
   which is the only channel that is monitored.
 
@@ -145,6 +186,8 @@ to the list of what does.
 - Anthropic's Opus and Sonnet cache-write prices are derived from estimated input
   rates and are marked `estimatedPricing`.
 
-[Unreleased]: https://github.com/Hotragn/husk/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/Hotragn/husk/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/Hotragn/husk/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/Hotragn/husk/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/Hotragn/husk/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Hotragn/husk/releases/tag/v0.1.0
