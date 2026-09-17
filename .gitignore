@@ -104,3 +104,9 @@ test-results/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Launch and marketing drafts. Written for one moment, revised constantly, and
+# not something a contributor reading this repo needs or should see in progress.
+/launch/
+/session.md
+/redistribute-source.md
