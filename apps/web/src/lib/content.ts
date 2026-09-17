@@ -11,7 +11,11 @@
  * site. The localhost default is right for `next dev` and wrong nowhere else,
  * because nothing is deployed yet.
  */
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const stripTrailingSlash = (url: string) => url.replace(/\/+$/, "");
+
+export const SITE_URL = stripTrailingSlash(
+  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+);
 export const REPO_URL = "https://github.com/Hotragn/husk";
 export const DOCS_URL = `${REPO_URL}#readme`;
 export const LICENCE = "Apache-2.0";

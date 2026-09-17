@@ -250,6 +250,14 @@ if (SITES_ONLY) {
       'process.env.NEXT_PUBLIC_SITE_URL',
       'the canonical URL is set at deploy time, never written down here',
     );
+    // A dashboard field is a text box and `https://example.com/` is what a
+    // person types. Unstripped, that slash reaches `Sitemap:` in robots.txt and
+    // every `<loc>` in the sitemap as `//`. Verified by building with one.
+    contains(
+      site,
+      'SITE_URL = stripTrailingSlash(',
+      'strip the trailing slash: NEXT_PUBLIC_SITE_URL is typed by hand and a slash doubles in every canonical URL',
+    );
     absent(site, 'husk.sh', 'SITE_URL reads NEXT_PUBLIC_SITE_URL; no domain belongs here');
   }
   contains(
