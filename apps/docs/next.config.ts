@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
   // from their frontmatter.
   pageExtensions: ['ts', 'tsx'],
   poweredByHeader: false,
+  // Next's default, written down: `sitemap.ts` emits the no-slash form for all
+  // thirty-eight pages, and `/start/quickstart/` 308s to `/start/quickstart`.
+  // A default that moves across a major version would move every canonical URL
+  // on the site with it.
+  trailingSlash: false,
 };
 
 export default nextConfig;

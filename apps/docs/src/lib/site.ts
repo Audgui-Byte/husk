@@ -12,8 +12,16 @@
  *
  * The port is 3001, not 3000: `apps/web` owns 3000, and running both at once is
  * the normal case when a link crosses between them.
+ *
+ * The trailing slash is stripped for the same reason as `apps/web`: a dashboard
+ * field is a text box, and an unstripped slash reaches robots.txt and all
+ * thirty-eight sitemap entries as a double slash.
  */
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3001';
+const stripTrailingSlash = (url: string) => url.replace(/\/+$/, '');
+
+export const SITE_URL = stripTrailingSlash(
+  process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3001',
+);
 
 export const SITE_NAME = 'Husk docs';
 export const SITE_DESCRIPTION =
