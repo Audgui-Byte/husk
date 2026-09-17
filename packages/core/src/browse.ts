@@ -1,4 +1,5 @@
 import { HuskError } from './errors.js';
+import { HUSK_BROWSER_USER_AGENT } from './identity.js';
 import { assertUrlAllowed, ownsLoopback } from './net.js';
 import type { Computer } from './types/computer.js';
 import type { NetworkPolicy } from './types/computer.js';
@@ -62,8 +63,15 @@ export interface BrowsePage {
   via: 'python3' | 'curl';
 }
 
-/** Written into the computer once, then reused. */
-const FETCH_SCRIPT = String.raw`
+/**
+ * Written into the computer once, then reused.
+ *
+ * Exported for the test that checks the User-Agent really is substituted. The
+ * failure it guards is silent: turn this back into an ordinary string and
+ * every site husk fetches receives the literal text `${HUSK_BROWSER_USER_AGENT}`
+ * as a User-Agent, with nothing in husk noticing.
+ */
+export const FETCH_SCRIPT = String.raw`
 import json, re, sys, html, urllib.request, urllib.error, urllib.parse, time
 
 url, follow, timeout, max_bytes = sys.argv[1], sys.argv[2] == "1", float(sys.argv[3]), int(sys.argv[4])
@@ -74,7 +82,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 opener = urllib.request.build_opener(*([] if follow else [NoRedirect]))
 req = urllib.request.Request(url, headers={
-    "User-Agent": "husk-browser/0.1 (+https://github.com/Hotragn/husk)",
+    "User-Agent": "${HUSK_BROWSER_USER_AGENT}",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5",
     "Accept-Language": "en",
 })
@@ -227,7 +235,7 @@ async function browseWithCurl(
     '-m',
     String(opts.timeoutSec),
     '-A',
-    'husk-browser/0.1 (+https://github.com/Hotragn/husk)',
+    HUSK_BROWSER_USER_AGENT,
     '-w',
     '\\nHUSK_META %{http_code} %{content_type} %{url_effective}',
     parsed.toString(),

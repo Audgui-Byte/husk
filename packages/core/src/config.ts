@@ -111,4 +111,3 @@ export const ENV_KEYS = {
 } as const;
 
 export const HUSK_PORT_DEFAULT = 7377;
-export const HUSK_USER_AGENT = 'husk/0.1.3 (+https://github.com/Hotragn/husk)';

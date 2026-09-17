@@ -17,6 +17,7 @@ export * from './net.js';
 export * from './browse.js';
 export * from './computer-info.js';
 export * from './windows-shell.js';
+export * from './identity.js';
 
 
 export type {
@@ -79,4 +80,3 @@ export type {
   DistilledAgent,
 } from './types/transcript.js';
 
-export const HUSK_VERSION = '0.1.3';

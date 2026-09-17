@@ -34,12 +34,6 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 export const VERSION = JSON.parse(read('package.json')).version;
 
 /**
- * A browser User-Agent carries major.minor only. Patch-level churn is a
- * fingerprinting signal and tells a server nothing it can act on.
- */
-const MAJOR_MINOR = VERSION.split(".").slice(0, 2).join(".");
-
-/**
  * The two sites live outside the npm workspace, so a typo in either must not
  * gate a runtime fix -- that is the friction scoping the install just removed.
  * Their invariants run under `--sites` as a separate, non-required CI job:
@@ -133,15 +127,20 @@ if (REPO_GIT) {
   // wrong URL fails this whatever the wrong URL turns out to be, which is the
   // whole difference from the deny list it replaces.
   //
-  // The next three are a holding pattern, not the design. #62 derives the user
-  // agent as `husk/${VERSION} (+${REPO})`, and then there is no literal here to
-  // assert: the string comes from two single-homed facts. They will keep passing
-  // after that change, because the derived string contains the same substring,
-  // so they have to be deleted deliberately rather than left to fail.
-  const operator = `the (+URL) in a user agent names the operator; use ${REPO}`;
-  contains('packages/core/src/config.ts', `(+${REPO})`, operator);
-  contains('packages/core/src/browse.ts', `(+${REPO})`, operator);
-  contains('packages/models/src/http.ts', `(+${REPO})`, operator);
+  // The three user-agent literals that used to be asserted here are gone: they
+  // are built in `core/src/identity.ts` from HUSK_VERSION and HUSK_REPO, so
+  // there is no longer a string that can disagree with this manifest. What is
+  // left is the one copy that cannot be derived -- a published package cannot
+  // read the workspace root at runtime -- and it is asserted here instead.
+  //
+  // Deleting them was deliberate. Every one kept passing after the change,
+  // because a derived string contains the same substring it used to hardcode,
+  // so nothing would ever have failed to prompt their removal.
+  contains(
+    'packages/core/src/identity.ts',
+    `HUSK_REPO = '${REPO}'`,
+    `core cannot read this manifest at runtime, so it carries the URL; use ${REPO}`,
+  );
   contains(
     'packages/models/src/providers/compatible.ts',
     `'http-referer': '${REPO}'`,
@@ -170,13 +169,9 @@ absent('CODE_OF_CONDUCT.md', 'husk-sh/', 'that GitHub org is not ours');
 if (!SITES_ONLY) {
   const bump = `package.json is on ${VERSION}; bump this to match`;
   contains("packages/cli/src/version.ts", `VERSION = '${VERSION}'`, bump);
-  contains("packages/core/src/index.ts", `HUSK_VERSION = '${VERSION}'`, bump);
-  // These three go with #62 for the same reason as the repo-URL assertions
-  // above: once the user agents interpolate ${VERSION}, they assert a substring
-  // of a string that can no longer disagree with the manifest.
-  contains("packages/core/src/config.ts", `husk/${VERSION}`, bump);
-  contains("packages/models/src/http.ts", `husk/${VERSION}`, bump);
-  contains("packages/core/src/browse.ts", `husk-browser/${MAJOR_MINOR}`, bump);
+  contains("packages/core/src/identity.ts", `HUSK_VERSION = '${VERSION}'`, bump);
+  // The three user-agent fragments that stood here are derived now. A bump
+  // edits the two constants in `identity.ts` and nothing else in this package.
   // docs/API.md is the control-plane contract, not a website: the example
   // payload has to show the version the server actually returns.
   contains("docs/API.md", `"version": "${VERSION}"`, bump);
