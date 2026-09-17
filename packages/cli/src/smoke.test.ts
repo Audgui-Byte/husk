@@ -44,6 +44,25 @@ describe('packaging', () => {
   });
 });
 
+/**
+ * Remove a scratch directory, allowing for Windows.
+ *
+ * Every directory in this file has just had a subprocess running inside it, and
+ * Windows keeps a handle on the working directory of a process it has already
+ * reaped. `rmSync` then races the OS and loses with `EBUSY: resource busy or
+ * locked, rmdir`. `maxRetries` is Node's answer: with `recursive`, it backs off
+ * linearly and retries exactly the error set this race produces -- EBUSY,
+ * EMFILE, ENFILE, ENOTEMPTY and EPERM.
+ *
+ * The failure was never a real one. Teardown runs after the assertions have
+ * passed, so the test had already proved what it exists to prove -- and the job
+ * went red anyway, on the one platform with the least coverage (#80, #63).
+ * `force` alone does not help: it suppresses "does not exist", not "is busy".
+ */
+function removeDir(dir: string): void {
+  rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+}
+
 let home: string;
 
 beforeAll(() => {
@@ -51,7 +70,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  rmSync(home, { recursive: true, force: true });
+  removeDir(home);
 });
 
 interface Result {
@@ -301,7 +320,7 @@ describe.skipIf(!built)('init and validate round trip', () => {
       expect(check.status).toBe(0);
       expect(JSON.parse(check.stdout).valid).toBe(true);
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      removeDir(dir);
     }
   });
 
@@ -314,7 +333,7 @@ describe.skipIf(!built)('init and validate round trip', () => {
       expect(second.stderr).toContain('--force');
       expect(husk(['init', 'x', '--yes', '--force'], { cwd: dir }).status).toBe(0);
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      removeDir(dir);
     }
   });
 });
