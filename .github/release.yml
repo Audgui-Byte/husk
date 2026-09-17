@@ -1,0 +1,16 @@
+# Configures the notes `gh release create --generate-notes` writes, which
+# `release.yml`'s last step calls on every tag.
+#
+# The reason this file exists is the "New contributors" section. GitHub adds it
+# automatically -- but only to generated notes, and v0.1.2's body was written by
+# hand, so EthemKD's first contribution (#26) went uncredited through four
+# releases. Generated notes are the floor now; edit them afterwards rather than
+# replacing them.
+changelog:
+  categories:
+    - title: Changed
+      labels: ["*"]
+      exclude:
+        labels: [dependencies]
+    - title: Dependencies
+      labels: [dependencies]
