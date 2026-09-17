@@ -9,8 +9,7 @@ import "./globals.css";
  * No next/font/google here, and no <link> to a font CDN. The product's claim
  * is that nothing leaves your machine; a third-party font origin on the
  * homepage would contradict it in the first 200ms. The three brand faces are
- * meant to be self-hosted from /fonts — see public/fonts/README.md — and
- * until they are, tokens.css's fallback stacks render.
+ * self-hosted from /fonts — see public/fonts/README.md.
  */
 
 export const metadata: Metadata = {
@@ -68,6 +67,25 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {/* The two faces above the fold, and only those. The mono face is not
+            preloaded: the first thing set in it is the install command, which
+            sits below the headline, and preloading a third file would delay
+            the two that paint first. Latin only — latin-ext is requested by
+            unicode-range when a page actually needs it. */}
+        <link
+          rel="preload"
+          as="font"
+          type="font/woff2"
+          href="/fonts/BricolageGrotesque-latin.woff2"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          as="font"
+          type="font/woff2"
+          href="/fonts/InstrumentSans-latin.woff2"
+          crossOrigin="anonymous"
+        />
       </head>
       <body>
         <a className="skip-link" href="#main">
