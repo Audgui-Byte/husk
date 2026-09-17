@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CodeBlock, CommandBlock } from "@/components/CodeBlock";
 import { HeroObject } from "@/components/HeroObject";
 import { ScrollCue } from "@/components/ScrollCue";
+import { ScrollNarrative } from "@/components/ScrollNarrative";
 import { Reveal } from "@/components/Reveal";
 import { IsolationViewer } from "@/components/IsolationViewer";
 import { StaticTerminal } from "@/components/StaticTerminal";
@@ -113,6 +114,12 @@ export default function Home() {
           was wrong.
         </p>
       </section>
+
+      {/* ------------------------------------------------------- the bridge */}
+      {/* The animated form of the two sections either side of it, so it gets
+          no heading and no eyebrow of its own. With JS off it is a plain
+          transcript of the same three facts, which is what a crawler sees. */}
+      <ScrollNarrative />
 
       {/* ---------------------------------------------------------- two jobs */}
       <section className="container section" aria-labelledby="jobs-title">

@@ -1134,6 +1134,244 @@ table.data tbody tr:hover {
 }
 
 /* -----------------------------------------------------------------------------
+   The scroll narrative.
+
+   A pinned stage scrubbed by a GSAP timeline. Three rules govern the whole
+   block:
+
+   1. Everything here ships VISIBLE. The states the timeline animates from live
+      behind [data-anim="on"], which the script sets after mount. With no JS,
+      with a failed hydration, or under prefers-reduced-motion, this section is
+      a plain readable transcript -- the command, the four tools, the output --
+      and that is the version a crawler indexes.
+   2. Nothing is display: none. Hidden beats are opacity and transform, so the
+      text stays in the accessibility tree throughout.
+   3. No coordinate in here is a scroll position. The stage is pinned by
+      ScrollTrigger and the mark's transform origin is measured on every
+      refresh; this file only says how big things are.
+-------------------------------------------------------------------------------- */
+
+/* No height here. ScrollTrigger's pin spacer supplies the scroll length the
+   four beats are scrubbed across (end: "+=2400" in ScrollNarrative.tsx), which
+   means with JS off this section is exactly as tall as its content instead of
+   two viewports of empty page. */
+.narrative {
+  position: relative;
+}
+
+.narrative-stage {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 100vh;
+  padding-block: var(--space-16);
+}
+
+/* With no JS the stage is not pinned, so the two layers must not overlap --
+   they stack, and both are readable. The script turns on the overlay. */
+.narrative[data-anim="on"] .narrative-stage {
+  grid-template-areas: "layer";
+  height: 100vh;
+}
+
+.narrative[data-anim="on"] .nr-chat,
+.narrative[data-anim="on"] .nr-mark {
+  grid-area: layer;
+}
+
+.nr-chat {
+  width: min(100%, 44rem);
+  margin-inline: auto;
+  border: var(--border-width-hairline) solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.nr-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--border-width-hairline) solid var(--color-border);
+  background: var(--color-raised);
+}
+
+.nr-dot {
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-accent-fill);
+}
+
+.nr-title {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: var(--tracking-mono);
+  color: var(--color-text-subtle);
+}
+
+.nr-body {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-4);
+}
+
+.nr-sent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.nr-who {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+}
+
+.nr-cmd {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  line-height: var(--leading-code);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.nr-gained {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.nr-tools {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nr-tool {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.nr-tool-name {
+  flex: 0 0 auto;
+  min-width: 9ch;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-accent);
+}
+
+.nr-tool-what {
+  flex: 1 1 18ch;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.nr-out {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  line-height: var(--leading-code);
+  overflow-x: auto;
+}
+
+.nr-line {
+  white-space: pre;
+  color: var(--color-text-muted);
+}
+
+.nr-line-prompt {
+  color: var(--color-text);
+}
+
+.nr-composer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-lg);
+  padding: 0 var(--space-4);
+  border-top: var(--border-width-hairline) solid var(--color-border);
+  background: var(--color-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  overflow: hidden;
+}
+
+.nr-typed {
+  white-space: pre;
+}
+
+.nr-caret {
+  flex: 0 0 auto;
+  width: 0.55ch;
+  height: 1.15em;
+  background: var(--color-accent-fill);
+}
+
+/* The mark the chat becomes. */
+.nr-mark {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-6);
+  width: min(100%, 22rem);
+  margin-inline: auto;
+}
+
+.nr-mark svg {
+  width: min(60vh, 18rem);
+  height: auto;
+}
+
+.nr-piece-shell,
+.nr-piece-flap {
+  fill: var(--color-primary-300);
+}
+
+.nr-piece-flap {
+  fill: var(--color-primary-500);
+}
+
+.nr-piece-core {
+  fill: var(--color-accent-300);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.nr-caption {
+  margin: 0;
+  max-width: 28ch;
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* ---- the states the timeline animates FROM. Script-gated, never shipped. --- */
+
+.narrative[data-anim="on"] .nr-sent,
+.narrative[data-anim="on"] .nr-gained,
+.narrative[data-anim="on"] .nr-tool,
+.narrative[data-anim="on"] .nr-line,
+.narrative[data-anim="on"] .nr-mark,
+.narrative[data-anim="on"] .nr-caption {
+  opacity: 0;
+}
+
+/* -----------------------------------------------------------------------------
    The scroll cue.
 
    One line and one chevron. It is an anchor, so it works clicked as well as
