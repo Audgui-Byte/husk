@@ -27,7 +27,6 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import * as THREE from "three";
 
 import {
@@ -121,6 +120,33 @@ function buildDust() {
   return { pos, seed };
 }
 
+/* The halo. A radial falloff on one quad, added to whatever is behind it --
+   the cheapest honest approximation of light coming off the core, and the only
+   thing in this scene that is not geometry. */
+const HALO_VERT = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const HALO_FRAG = /* glsl */ `
+  uniform vec3 uColor;
+  uniform float uStrength;
+  varying vec2 vUv;
+  void main() {
+    float d = length(vUv - 0.5) * 2.0;
+    // Two falloffs summed: a tight core and a wide wash, which is what a bloom
+    // pass produces and what one gaussian does not.
+    float tight = exp(-d * 7.0);
+    float wide  = exp(-d * 2.4) * 0.35;
+    float a = (tight + wide) * uStrength;
+    if (a < 0.002) discard;
+    gl_FragColor = vec4(uColor * a, a);
+  }
+`;
+
 /* Both easings are the shape of --ease-enter: quick off the mark, long settle.
    Written out because a GPU frame cannot read a CSS custom property. */
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
@@ -138,6 +164,8 @@ function Scene({ colors, pointer, onOpened, startOpen }: Omit<HeroPodProps, "run
   const glyphRef = useRef<THREE.Group>(null);
   const caretRef = useRef<THREE.Mesh>(null);
   const dustRef = useRef<THREE.Points>(null);
+  const haloRef = useRef<THREE.Mesh>(null);
+  const haloMat = useRef<THREE.ShaderMaterial>(null);
   const invalidate = useThree((s) => s.invalidate);
 
   const anim = useRef({
@@ -160,6 +188,17 @@ function Scene({ colors, pointer, onOpened, startOpen }: Omit<HeroPodProps, "run
     [],
   );
   const dust = useMemo(() => buildDust(), []);
+  const haloUniforms = useMemo(
+    () => ({ uColor: { value: new THREE.Color(colors.coreLit) }, uStrength: { value: 0 } }),
+    // Built once; the colour is pushed imperatively so a theme change does not
+    // recompile the program.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  useEffect(() => {
+    haloUniforms.uColor.value.set(colors.coreLit);
+  }, [colors, haloUniforms]);
 
   useEffect(() => {
     const g = geo;
@@ -217,6 +256,12 @@ function Scene({ colors, pointer, onOpened, startOpen }: Omit<HeroPodProps, "run
     }
     if (coreMat.current) {
       coreMat.current.emissiveIntensity = 0.2 + 2.3 * lift;
+    }
+    if (haloMat.current) {
+      haloMat.current.uniforms.uStrength.value = Math.max(0, lift) * 0.5;
+    }
+    if (haloRef.current && core) {
+      haloRef.current.position.copy(core.position);
     }
 
     const glyph = glyphRef.current;
@@ -291,6 +336,29 @@ function Scene({ colors, pointer, onOpened, startOpen }: Omit<HeroPodProps, "run
           />
         </mesh>
 
+        {/* The glow, and why it is not a bloom pass.
+            @react-three/postprocessing composites through an EffectComposer
+            that writes an opaque frame, which put a hard-edged dark rectangle
+            behind a canvas the whole hero depends on being transparent. It
+            also costs about 100K of JavaScript on a page whose Total Blocking
+            Time is already the thing being fixed.
+            This is one additive quad with a radial falloff: same read, no
+            render target, no second library, and it composites over the page
+            because it never touches the alpha channel. */}
+        <mesh ref={haloRef} position={CORE_CLOSED} renderOrder={-1}>
+          <planeGeometry args={[2.1, 2.1]} />
+          <shaderMaterial
+            ref={haloMat}
+            transparent
+            depthWrite={false}
+            depthTest={false}
+            blending={THREE.AdditiveBlending}
+            uniforms={haloUniforms}
+            vertexShader={HALO_VERT}
+            fragmentShader={HALO_FRAG}
+          />
+        </mesh>
+
         <mesh ref={coreRef} geometry={geo.core} position={CORE_CLOSED}>
           <meshStandardMaterial
             ref={coreMat}
@@ -353,11 +421,6 @@ function Scene({ colors, pointer, onOpened, startOpen }: Omit<HeroPodProps, "run
         </points>
       </group>
 
-      {/* One pass, and it is aimed at the core alone: the threshold sits above
-          every other lit surface here, so the shell never blooms. */}
-      <EffectComposer enableNormalPass={false}>
-        <Bloom intensity={0.72} luminanceThreshold={0.62} luminanceSmoothing={0.28} mipmapBlur />
-      </EffectComposer>
     </>
   );
 }

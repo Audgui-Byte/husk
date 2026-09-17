@@ -1134,6 +1134,188 @@ table.data tbody tr:hover {
 }
 
 /* -----------------------------------------------------------------------------
+   The provider orbit.
+
+   Five parallel options round the object they describe. No numbers on the
+   nodes: docker, podman, local, ssh and fly are a set, not a sequence, and
+   numbering a set invents an order the product does not have.
+
+   On the drift. The brief for this asked for a slow orbital drift, and the
+   nodes do not have it -- they are click targets, and a target that moves is a
+   target you miss, which is a worse trade than the one the motion buys. What
+   drifts is one faint ring with nothing on it: the same read, no hit area
+   crossing the pointer. It stops entirely under prefers-reduced-motion.
+
+   Everything this draws is also in the DOM twice over -- as a pressed button
+   and as a row of the table above -- so the SVG is aria-hidden.
+-------------------------------------------------------------------------------- */
+
+.orbit {
+  position: relative;
+  width: 100%;
+  max-width: 30rem;
+  margin-inline: auto;
+  aspect-ratio: 1 / 1;
+}
+
+.orbit-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.orbit-ring {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-width: 0.25;
+}
+
+.orbit-ring-drift {
+  stroke: var(--color-border-strong);
+  stroke-dasharray: 1.2 2.6;
+  transform-origin: 50% 50%;
+  animation: orbit-drift 140s linear infinite;
+}
+
+.orbit-spoke {
+  stroke: var(--color-border);
+  stroke-width: 0.25;
+}
+
+.orbit-spoke[data-active="true"] {
+  stroke: var(--color-accent-fill);
+  stroke-width: 0.45;
+}
+
+@keyframes orbit-drift {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* tokens.css already collapses every animation to 1ms and one iteration, which
+   happens to end this one where it started. Saying it outright anyway: a loop
+   is removed under reduced motion, not run once very fast. */
+@media (prefers-reduced-motion: reduce) {
+  .orbit-ring-drift {
+    animation: none;
+  }
+}
+
+/* The core sits in the middle of the ring, inside the spokes' inner radius. */
+.orbit-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 42%;
+  height: 42%;
+  transform: translate(-50%, -50%);
+}
+
+/* Inside the ring the stage loses its surface and its rule. Both belonged to
+   the .frame that used to wrap it; a hard-edged rectangle in the middle of a
+   circle of nodes reads as a hole rather than a centre. The object keeps its
+   own silhouette against --color-bg, which is what the SVG fallback assumes. */
+.orbit-core .core-stage {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  background: transparent;
+  border-bottom: 0;
+}
+
+/* The focus ring has to stay reachable now the box has no edge of its own. */
+.orbit-core .core-stage:focus-visible {
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+.orbit-node {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-md);
+  padding: 0 var(--space-3);
+  transform: translate(-50%, -50%);
+  border: var(--border-width-hairline) solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  letter-spacing: var(--tracking-mono);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition-colors);
+}
+
+.orbit-node:hover {
+  background: var(--color-raised);
+  color: var(--color-text);
+  border-color: var(--color-text-subtle);
+}
+
+.orbit-node:active {
+  background: var(--color-surface);
+}
+
+.orbit-node[aria-pressed="true"] {
+  background: var(--color-raised);
+  border-color: var(--color-border-focus);
+  color: var(--color-text);
+}
+
+/* Colour is never the only channel: the selected node also fills its dot. */
+.orbit-node-dot {
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-full);
+  border: var(--border-width-hairline) solid var(--color-text-subtle);
+  background: transparent;
+}
+
+.orbit-node[aria-pressed="true"] .orbit-node-dot {
+  background: var(--color-accent-fill);
+  border-color: var(--color-accent-fill);
+}
+
+/* Under 40rem the ring is smaller than the labels it has to carry, so the
+   nodes stop being a ring and become the list they always were underneath. */
+@media (max-width: 39.99rem) {
+  .orbit {
+    aspect-ratio: auto;
+    max-width: none;
+  }
+
+  .orbit-lines,
+  .orbit-ring-drift {
+    display: none;
+  }
+
+  .orbit-core {
+    position: static;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    transform: none;
+  }
+
+  .orbit-nodes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-5);
+  }
+
+  .orbit-node {
+    position: static;
+    transform: none;
+  }
+}
+
+/* -----------------------------------------------------------------------------
    The install selector.
 
    A segmented control, from section 4 of UI-PRINCIPLES: the pills get the same
@@ -1564,8 +1746,13 @@ table.data tbody tr:hover {
 .core-readout {
   display: grid;
   gap: var(--space-1);
+  margin-top: var(--space-6);
   padding: var(--space-3) var(--space-4);
   background: var(--color-surface);
+  /* It used to sit inside a .frame, which owned the border. The orbit replaced
+     that wrapper, so the panel carries its own now. */
+  border: var(--border-width-hairline) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
 }
@@ -1584,19 +1771,6 @@ table.data tbody tr:hover {
 .core-readout dd {
   margin: 0;
   color: var(--color-text);
-}
-
-.core-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  margin-top: var(--space-3);
-}
-
-.core-controls .btn {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-sm);
-  padding-inline: var(--space-3);
 }
 
 .core-hint {
