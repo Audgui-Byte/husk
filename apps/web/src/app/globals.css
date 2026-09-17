@@ -1318,14 +1318,15 @@ table.data tbody tr:hover {
 }
 
 /* =============================================================================
-   MOTION — the 21st.dev register, for comparison
+   MOTION
 
-   Everything in this block is banned by UI-PRINCIPLES.md §3 and §8: a hero
-   entrance, scroll-triggered reveals, and a looping gradient behind the fold.
-   It is here so the ban can be judged against the thing itself. Keep this
-   direction and §3 gets rewritten in the same change; drop it and this block
-   goes with it. It must not sit here indefinitely contradicting the document
-   the rest of the stylesheet obeys.
+   What survived the comparison: a hero entrance once per load, and a reveal on
+   section heads. Both are now permitted by UI-PRINCIPLES.md §3, which was
+   amended alongside this rather than left to contradict it.
+
+   What did not: the looping gradient behind the fold, which read as a smear
+   under the type rather than light on a surface, and was §8.1 and §8.8 besides.
+   §8 needed no amendment once it was gone.
 
    Three rules held regardless of which way that goes:
 
@@ -1437,39 +1438,9 @@ table.data tbody tr:hover {
    install command; the object is a square that looks right at any size. Giving
    the object the extra column is how the command ended up truncated at 1152 in
    the first place. */
-.hero-grid {
-  align-items: center;
-}
 
-.hero-grid .hero-copy {
-  grid-column: span 8;
-}
 
-.hero-grid .hero-figure {
-  grid-column: span 4;
-}
 
-/* The panel sticks while its story plays, so the reader is not chasing it up
-   the screen mid-sentence. `align-self: start` is required: a grid item
-   stretches by default, and a stretched item has no free space to stick
-   within. Below 80rem the grid is one column and sticky would pin the panel
-   over the copy, so it is off there. */
-@media (min-width: 80rem) {
-  .hero-grid {
-    align-items: start;
-  }
-
-  .hero-grid .hero-figure {
-    position: sticky;
-    top: var(--space-20);
-    align-self: start;
-  }
-
-  /* Scroll distance for the chat to play through while pinned. */
-  .hero-anim {
-    padding-bottom: var(--space-24);
-  }
-}
 
 /* aspect-ratio, not min-height. HuskCore's canvas is height: 100%, and 100% of
    a parent whose height is only a minimum resolves against a height the canvas
@@ -1529,202 +1500,6 @@ table.data tbody tr:hover {
   margin: var(--space-2) 0 0;
 }
 
-/* -- the chat panel ---------------------------------------------------------- */
-
-.chat {
-  display: flex;
-  flex-direction: column;
-  background: var(--color-sunken);
-  border: var(--border-width-hairline) solid var(--color-border-strong);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  min-height: 21rem;
-}
-
-.chat-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-2) var(--space-4);
-  background: var(--color-surface);
-  border-bottom: var(--border-width-hairline) solid var(--color-border);
-  min-height: var(--control-height-lg);
-}
-
-.chat-title {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--color-text-subtle);
-}
-
-.chat-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--color-border-strong);
-}
-
-.chat[data-stage="machine"] .chat-dot {
-  background: var(--color-success);
-}
-
-.chat-body {
-  flex: 1;
-  padding: var(--space-4);
-}
-
-.chat-stream {
-  display: grid;
-  gap: var(--space-3);
-}
-
-/* Each stage occupies its space from the start, so nothing below the panel
-   moves as the reader scrolls through it. Only opacity and a short offset
-   change — a layout that reflows on scroll is the thing that makes scroll
-   choreography feel cheap. */
-.chat-msg,
-.chat-machine {
-  opacity: 0;
-  transform: translate3d(0, 6px, 0);
-  transition:
-    opacity 260ms var(--ease-enter),
-    transform 260ms var(--ease-enter);
-}
-
-.chat-msg.is-in,
-.chat-machine.is-in {
-  opacity: 1;
-  transform: none;
-}
-
-.chat-msg {
-  display: grid;
-  grid-template-columns: 3.25rem 1fr;
-  gap: var(--space-3);
-  align-items: baseline;
-  font-size: var(--font-size-sm);
-  line-height: var(--leading-normal);
-}
-
-.chat-who {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--color-text-subtle);
-}
-
-.chat-user code {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-sm);
-  color: var(--color-text);
-  overflow-wrap: anywhere;
-}
-
-.chat-bot span:last-child {
-  color: var(--color-text-muted);
-}
-
-.chat-machine {
-  margin-top: var(--space-2);
-  border: var(--border-width-hairline) solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface);
-}
-
-.chat-machine-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--color-text-accent);
-}
-
-.chat-machine-dot {
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 50%;
-  background: var(--color-success);
-}
-
-.chat-machine-grid {
-  display: grid;
-  gap: var(--space-2);
-  margin: var(--space-3) 0 0;
-}
-
-.chat-machine-grid div {
-  display: grid;
-  grid-template-columns: 4rem 1fr;
-  gap: var(--space-3);
-}
-
-.chat-machine-grid dt {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
-  color: var(--color-text);
-}
-
-.chat-machine-grid dd {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-.chat-composer {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border-top: var(--border-width-hairline) solid var(--color-border);
-  background: var(--color-surface);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-sm);
-  min-height: var(--control-height-lg);
-}
-
-.chat-prompt {
-  color: var(--color-text-primary);
-}
-
-.chat-input {
-  color: var(--color-text);
-  overflow-wrap: anywhere;
-}
-
-/* The caret is the one looping thing on the page, and it loops for the reason
-   a caret always does: it marks a field that is waiting for input. It stops
-   the moment the message sends. */
-.chat-caret {
-  width: 0.5ch;
-  height: 1em;
-  background: var(--color-text-accent);
-  animation: caret-blink 1.1s steps(1, end) infinite;
-}
-
-.chat-caret.is-idle {
-  animation: none;
-  opacity: 0;
-}
-
-@keyframes caret-blink {
-  0%,
-  50% {
-    opacity: 1;
-  }
-  50.01%,
-  100% {
-    opacity: 0;
-  }
-}
-
 /* -- loading ----------------------------------------------------------------
 
    There is no `loading.tsx`, deliberately.
@@ -1741,16 +1516,3 @@ table.data tbody tr:hover {
    cost a page that renders at all. `error.tsx` and `global-error.tsx` have no
    such interaction and stay.
 -------------------------------------------------------------------------------- */
-
-@media (prefers-reduced-motion: reduce) {
-  .chat-msg,
-  .chat-machine {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-
-  .chat-caret {
-    animation: none;
-  }
-}

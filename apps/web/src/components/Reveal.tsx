@@ -6,11 +6,15 @@ import type { ReactNode } from "react";
 /**
  * Scroll-triggered entrance.
  *
- * UI-PRINCIPLES.md §3 bans this outright — "the content was already there;
- * animating it in tells the reader the page is a slideshow". This component
- * exists so that rule can be judged against the thing it forbids rather than in
- * the abstract. If this direction is kept, §3 gets rewritten in the same change;
- * if it is dropped, this file goes with it.
+ * UI-PRINCIPLES.md §3 banned this outright. It now permits it on section heads
+ * under five conditions, and this component is where four of them live: it
+ * fires once, the content ships visible, `prefers-reduced-motion` opts out
+ * before the observer exists, and the root margin starts the motion before the
+ * element reaches the fold. The fifth — heads only, never prose or terminals —
+ * is enforced by where it is used, not by this file.
+ *
+ * §3 keeps the original argument against reveals and still asks the test:
+ * if a section needs an entrance to feel important, it is not important.
  *
  * Two things are not negotiable whatever the aesthetic:
  *

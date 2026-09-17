@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CodeBlock, CommandBlock } from "@/components/CodeBlock";
-import { ChatScroll } from "@/components/ChatScroll";
-import { HeroObject } from "@/components/HeroObject";
 import { Reveal } from "@/components/Reveal";
 import { IsolationViewer } from "@/components/IsolationViewer";
 import { StaticTerminal } from "@/components/StaticTerminal";
@@ -35,8 +33,8 @@ export default function Home() {
         aria-labelledby="hero-title"
         style={{ position: "relative" }}
       >
-        <div className="grid12 hero-grid">
-          <div className="hero-copy">
+        <div>
+          <div className="hero-copy hero-copy-wide">
             <h1 id="hero-title" className="h-hero">
               Your AI chat gets a real computer of its own.
             </h1>
@@ -72,10 +70,6 @@ export default function Home() {
               Free. No account, no card. Apache-2.0 · works with Claude Code,
               Cursor, Zed, or anything speaking MCP
             </p>
-          </div>
-
-          <div className="hero-figure">
-            <ChatScroll />
           </div>
         </div>
 
