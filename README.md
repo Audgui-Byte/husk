@@ -241,7 +241,9 @@ the test requirements, and how to add a provider or a model.
 
 ## Contributors
 
-Everyone who has shipped something here is listed in [CONTRIBUTORS.md](CONTRIBUTORS.md).
+Everyone who has shipped something here is on the
+[contributors graph](https://github.com/Hotragn/husk/graphs/contributors), which counts
+commits rather than asking anyone to remember to add a name.
 
 ## License
 
