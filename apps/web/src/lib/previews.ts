@@ -17,6 +17,7 @@ export interface Preview {
   title: string;
   summary: string;
   external?: boolean;
+  prefetch?: boolean;
 }
 
 export const PREVIEWS = {
@@ -33,6 +34,15 @@ export const PREVIEWS = {
     title: "Why agents need honest sandboxes",
     summary:
       "Guardrails stop accidents. Only isolation stops a prompt-injected model.",
+    /**
+     * Newsreader is 113K across its two faces and /manifesto is the only route
+     * that sets it. Next's default prefetch pulled both onto the homepage as
+     * soon as the footer scrolled into view -- confirmed in the network panel,
+     * and Chrome warned about it: "preloaded using link preload but not used".
+     * The preview card is what the reader gets instead, which is the better
+     * trade for a page most of them will not open.
+     */
+    prefetch: false,
   },
   source: {
     href: "https://github.com/Hotragn/husk",

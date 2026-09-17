@@ -51,6 +51,14 @@ export interface LinkPreviewProps {
   summary: string;
   /** An external destination gets an anchor rather than a next/link. */
   external?: boolean;
+  /**
+   * Passed to next/link. Worth turning off for a route whose assets are
+   * heavier than the navigation is likely: prefetching pulls the destination's
+   * fonts and CSS on a page that may never go there. The preview card already
+   * shows the reader what is on the other side, which is most of what the
+   * prefetch was buying.
+   */
+  prefetch?: boolean;
   children: React.ReactNode;
   className?: string;
 }
@@ -67,6 +75,7 @@ export function LinkPreview({
   title,
   summary,
   external,
+  prefetch,
   children,
   className,
 }: LinkPreviewProps) {
@@ -157,7 +166,7 @@ export function LinkPreview({
           {children}
         </a>
       ) : (
-        <Link className={className} href={href} {...handlers}>
+        <Link className={className} href={href} prefetch={prefetch} {...handlers}>
           {children}
         </Link>
       )}
