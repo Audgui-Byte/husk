@@ -1,0 +1,45 @@
+version: 2
+
+# Three lockfiles, because `apps/web` and `apps/docs` sit outside the root npm
+# workspace on purpose -- the root install covers `packages/*` and `apps/console`
+# only. `directories` (plural) is the multi-location key, so one entry reaches
+# all three rather than three near-identical entries drifting apart.
+updates:
+  - package-ecosystem: npm
+    directories: ["/", "/apps/web", "/apps/docs"]
+    schedule:
+      interval: weekly
+    # A solo maintainer reviewing eleven open dependency PRs reviews none of
+    # them. Grouping minor and patch by dependency-type makes a typical week two
+    # PRs; majors stay ungrouped so a breaking bump arrives on its own.
+    open-pull-requests-limit: 3
+    # A package that ships three patches in a week is otherwise three PRs, two
+    # of which are obsolete before anyone looks.
+    cooldown:
+      default-days: 7
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types: ["minor", "patch"]
+      production-minor-patch:
+        dependency-type: production
+        update-types: ["minor", "patch"]
+    ignore:
+      # React and Zod are pinned exactly by root `overrides`, and the two
+      # out-of-workspace sites pin React themselves because the override cannot
+      # reach them. A PR bumping React in `apps/web` alone breaks that agreement
+      # in a way no check catches, so React moves in one hand-made commit
+      # touching the override and both sites, or it does not move.
+      - dependency-name: react
+      - dependency-name: react-dom
+      - dependency-name: zod
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ["*"]
