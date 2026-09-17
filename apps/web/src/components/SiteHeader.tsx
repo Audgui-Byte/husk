@@ -8,9 +8,9 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { DOCS_URL, REPO_URL } from "@/lib/content";
 
 /**
- * Docs is external until the docs site has a domain: `DOCS_URL` resolves to the
- * repository README today and to docs.<domain> the day NEXT_PUBLIC_SITE_URL is
- * set for `apps/docs`. One constant, so the nav follows without an edit here.
+ * Docs is an external link because the docs are a separate deployment.
+ * `DOCS_URL` reads NEXT_PUBLIC_DOCS_URL and falls back to the repository
+ * README, so this file needs no edit when the docs move to a real domain.
  */
 const NAV = [
   { href: "/manifesto", label: "Manifesto" },

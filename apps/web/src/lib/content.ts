@@ -17,7 +17,22 @@ export const SITE_URL = stripTrailingSlash(
   process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 );
 export const REPO_URL = "https://github.com/Hotragn/husk";
-export const DOCS_URL = `${REPO_URL}#readme`;
+/**
+ * Where the Docs link in the nav goes.
+ *
+ * Set NEXT_PUBLIC_DOCS_URL on this project to the docs deployment. It is a
+ * second variable rather than a guess derived from SITE_URL, because the two
+ * sites are two Vercel projects on unrelated hostnames today and only become
+ * `example.com` and `docs.example.com` once a real domain exists -- deriving
+ * one from the other would be right exactly once.
+ *
+ * The fallback is the README, which is where the docs were before the docs
+ * site was deployed. That is the honest default: a link that reaches
+ * documentation, rather than one pointing at a hostname that may not answer.
+ */
+export const DOCS_URL = stripTrailingSlash(
+  process.env.NEXT_PUBLIC_DOCS_URL ?? `${REPO_URL}#readme`,
+);
 export const LICENCE = "Apache-2.0";
 
 export const SITE_DESCRIPTION =
