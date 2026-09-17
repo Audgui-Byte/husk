@@ -1385,37 +1385,13 @@ table.data tbody tr:hover {
   animation: hero-rise 560ms var(--ease-enter) 400ms both;
 }
 
-/* -- the backdrop ------------------------------------------------------------ */
+/* -- the backdrop ------------------------------------------------------------
 
-.hero-glow {
-  position: absolute;
-  /* Inset 0 horizontally, not -10%. The bled version overflowed the document by
-     66px at phone widths -- body's overflow-x: hidden clipped it, so it was
-     invisible while still widening the page. A decorative layer must not be the
-     thing that makes the page wider than the viewport. */
-  inset: -20% 0 auto 0;
-  height: 120%;
-  z-index: -1;
-  pointer-events: none;
-  /* --color-accent-500 / -300, not --color-accent: the scale is numbered and
-     there is no unnumbered alias. The first version of this rule named one and
-     resolved the whole background to `none`, which is the failure mode of
-     writing CSS you have not looked at. */
-  background:
-    radial-gradient(60% 50% at 22% 18%, color-mix(in oklab, var(--color-accent-500) 18%, transparent), transparent 70%),
-    radial-gradient(45% 40% at 78% 8%, color-mix(in oklab, var(--color-accent-300) 10%, transparent), transparent 70%);
-  filter: blur(36px);
-  animation: glow-drift 22s var(--ease-linear) infinite alternate;
-}
-
-@keyframes glow-drift {
-  from {
-    transform: translate3d(-2%, -1%, 0) scale(1);
-  }
-  to {
-    transform: translate3d(3%, 2%, 0) scale(1.08);
-  }
-}
+   Removed. The teal wash behind the hero read as a smear under the type rather
+   than as light on a surface, and no amount of opacity fixed the fact that it
+   was decoration competing with a headline. What fills that space now is the
+   chat panel, which is content.
+-------------------------------------------------------------------------------- */
 
 /* -- scroll reveals ---------------------------------------------------------- */
 
@@ -1439,13 +1415,8 @@ table.data tbody tr:hover {
   .hero-anim .lead,
   .hero-anim .cmd,
   .hero-anim .hero-actions,
-  .hero-anim .meta,
-  .hero-glow {
+  .hero-anim .meta {
     animation: none;
-  }
-
-  .hero-glow {
-    display: none;
   }
 
   .reveal-armed,
@@ -1476,6 +1447,28 @@ table.data tbody tr:hover {
 
 .hero-grid .hero-figure {
   grid-column: span 4;
+}
+
+/* The panel sticks while its story plays, so the reader is not chasing it up
+   the screen mid-sentence. `align-self: start` is required: a grid item
+   stretches by default, and a stretched item has no free space to stick
+   within. Below 80rem the grid is one column and sticky would pin the panel
+   over the copy, so it is off there. */
+@media (min-width: 80rem) {
+  .hero-grid {
+    align-items: start;
+  }
+
+  .hero-grid .hero-figure {
+    position: sticky;
+    top: var(--space-20);
+    align-self: start;
+  }
+
+  /* Scroll distance for the chat to play through while pinned. */
+  .hero-anim {
+    padding-bottom: var(--space-24);
+  }
 }
 
 /* aspect-ratio, not min-height. HuskCore's canvas is height: 100%, and 100% of
@@ -1534,4 +1527,230 @@ table.data tbody tr:hover {
 .step-what {
   color: var(--color-text-muted);
   margin: var(--space-2) 0 0;
+}
+
+/* -- the chat panel ---------------------------------------------------------- */
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-sunken);
+  border: var(--border-width-hairline) solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  min-height: 21rem;
+}
+
+.chat-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  border-bottom: var(--border-width-hairline) solid var(--color-border);
+  min-height: var(--control-height-lg);
+}
+
+.chat-title {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.chat-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-border-strong);
+}
+
+.chat[data-stage="machine"] .chat-dot {
+  background: var(--color-success);
+}
+
+.chat-body {
+  flex: 1;
+  padding: var(--space-4);
+}
+
+.chat-stream {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* Each stage occupies its space from the start, so nothing below the panel
+   moves as the reader scrolls through it. Only opacity and a short offset
+   change — a layout that reflows on scroll is the thing that makes scroll
+   choreography feel cheap. */
+.chat-msg,
+.chat-machine {
+  opacity: 0;
+  transform: translate3d(0, 6px, 0);
+  transition:
+    opacity 260ms var(--ease-enter),
+    transform 260ms var(--ease-enter);
+}
+
+.chat-msg.is-in,
+.chat-machine.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+.chat-msg {
+  display: grid;
+  grid-template-columns: 3.25rem 1fr;
+  gap: var(--space-3);
+  align-items: baseline;
+  font-size: var(--font-size-sm);
+  line-height: var(--leading-normal);
+}
+
+.chat-who {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.chat-user code {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.chat-bot span:last-child {
+  color: var(--color-text-muted);
+}
+
+.chat-machine {
+  margin-top: var(--space-2);
+  border: var(--border-width-hairline) solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+}
+
+.chat-machine-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-text-accent);
+}
+
+.chat-machine-dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--color-success);
+}
+
+.chat-machine-grid {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+}
+
+.chat-machine-grid div {
+  display: grid;
+  grid-template-columns: 4rem 1fr;
+  gap: var(--space-3);
+}
+
+.chat-machine-grid dt {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text);
+}
+
+.chat-machine-grid dd {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.chat-composer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: var(--border-width-hairline) solid var(--color-border);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  min-height: var(--control-height-lg);
+}
+
+.chat-prompt {
+  color: var(--color-text-primary);
+}
+
+.chat-input {
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+/* The caret is the one looping thing on the page, and it loops for the reason
+   a caret always does: it marks a field that is waiting for input. It stops
+   the moment the message sends. */
+.chat-caret {
+  width: 0.5ch;
+  height: 1em;
+  background: var(--color-text-accent);
+  animation: caret-blink 1.1s steps(1, end) infinite;
+}
+
+.chat-caret.is-idle {
+  animation: none;
+  opacity: 0;
+}
+
+@keyframes caret-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* -- loading ----------------------------------------------------------------
+
+   There is no `loading.tsx`, deliberately.
+
+   Adding one wraps the route in a Suspense boundary, and this page holds two
+   `next/dynamic` components with `ssr: false` (the WebGL core, in the hero and
+   in Providers). With the boundary present the segment fell back and never
+   came out of it: the real `<main>` sat in a `display: none` div while the
+   loading state rendered, on a clean dev server and a cleared .next both.
+
+   It was not worth diagnosing further, because the feature it buys is close to
+   nothing here. Every route on this site is statically prerendered, so a
+   route-level loading state can only appear during a slow navigation -- and it
+   cost a page that renders at all. `error.tsx` and `global-error.tsx` have no
+   such interaction and stay.
+-------------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-msg,
+  .chat-machine {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .chat-caret {
+    animation: none;
+  }
 }

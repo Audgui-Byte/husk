@@ -5,12 +5,19 @@ import { usePathname } from "next/navigation";
 
 import { HuskMark, HuskWordmark } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { REPO_URL } from "@/lib/content";
+import { DOCS_URL, REPO_URL } from "@/lib/content";
 
+/**
+ * Docs is external until the docs site has a domain: `DOCS_URL` resolves to the
+ * repository README today and to docs.<domain> the day NEXT_PUBLIC_SITE_URL is
+ * set for `apps/docs`. One constant, so the nav follows without an edit here.
+ */
 const NAV = [
   { href: "/manifesto", label: "Manifesto" },
   { href: "/pricing", label: "Pricing" },
 ];
+
+const NAV_EXTERNAL = [{ href: DOCS_URL, label: "Docs" }];
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -33,6 +40,16 @@ export function SiteHeader() {
             >
               {item.label}
             </Link>
+          ))}
+          {NAV_EXTERNAL.map((item) => (
+            <a
+              key={item.label}
+              className="nav-link"
+              href={item.href}
+              rel="noreferrer noopener"
+            >
+              {item.label}
+            </a>
           ))}
           <a
             className="nav-link nav-hide-sm"

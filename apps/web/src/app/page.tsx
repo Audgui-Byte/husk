@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CodeBlock, CommandBlock } from "@/components/CodeBlock";
+import { ChatScroll } from "@/components/ChatScroll";
 import { HeroObject } from "@/components/HeroObject";
 import { Reveal } from "@/components/Reveal";
 import { IsolationViewer } from "@/components/IsolationViewer";
@@ -34,7 +35,6 @@ export default function Home() {
         aria-labelledby="hero-title"
         style={{ position: "relative" }}
       >
-        <div className="hero-glow" aria-hidden="true" />
         <div className="grid12 hero-grid">
           <div className="hero-copy">
             <h1 id="hero-title" className="h-hero">
@@ -75,7 +75,7 @@ export default function Home() {
           </div>
 
           <div className="hero-figure">
-            <HeroObject />
+            <ChatScroll />
           </div>
         </div>
 
