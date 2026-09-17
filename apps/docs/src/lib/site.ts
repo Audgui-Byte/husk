@@ -4,6 +4,17 @@
  * `HUSK_VERSION` is read from the monorepo root package.json rather than typed
  * here, so the docs cannot claim a version the repo is not on.
  */
+/**
+ * Set NEXT_PUBLIC_SITE_URL at deploy time. It feeds metadataBase, robots.txt and
+ * sitemap.xml, so a wrong value here tells search engines someone else owns this
+ * site. The localhost default is right for `next dev` and wrong nowhere else,
+ * because nothing is deployed yet.
+ *
+ * The port is 3001, not 3000: `apps/web` owns 3000, and running both at once is
+ * the normal case when a link crosses between them.
+ */
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3001';
+
 export const SITE_NAME = 'Husk docs';
 export const SITE_DESCRIPTION =
   'Husk gives any AI agent a disposable Linux computer, and turns any chat into a bot. Runs free on your machine. No account, no telemetry.';

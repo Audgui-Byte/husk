@@ -2,10 +2,11 @@ import type { Metadata, Viewport } from 'next';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { ThemeScript } from '@/components/ThemeScript';
-import { SITE_DESCRIPTION, SITE_NAME } from '@/lib/site';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 import './globals.css';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: { default: SITE_NAME, template: `%s — ${SITE_NAME}` },
   description: SITE_DESCRIPTION,
   icons: { icon: '/favicon.svg' },

@@ -237,7 +237,21 @@ if (SITES_ONLY) {
   }
   // Not derivable: SITE_URL reads NEXT_PUBLIC_SITE_URL now, so the requirement
   // is that no domain is hardcoded at all, which only an absence can say.
-  absent('apps/web/src/lib/content.ts', 'husk.sh', 'SITE_URL reads NEXT_PUBLIC_SITE_URL; no domain belongs here');
+  //
+  // Both sites, because only one of them had it. `apps/docs` shipped with no
+  // SITE_URL at all -- no metadataBase, no robots.txt, no sitemap.xml -- which
+  // is not a wrong canonical URL but no canonical URL, and an assertion that
+  // only watched `apps/web` had nothing to say about it. The positive half is
+  // the half that matters here: a file that reads the env var cannot hardcode a
+  // domain, and a file that has no SITE_URL at all fails this outright.
+  for (const site of ['apps/web/src/lib/content.ts', 'apps/docs/src/lib/site.ts']) {
+    contains(
+      site,
+      'process.env.NEXT_PUBLIC_SITE_URL',
+      'the canonical URL is set at deploy time, never written down here',
+    );
+    absent(site, 'husk.sh', 'SITE_URL reads NEXT_PUBLIC_SITE_URL; no domain belongs here');
+  }
   contains(
     "apps/docs/src/lib/site.ts",
     `HUSK_VERSION = '${VERSION}'`,
