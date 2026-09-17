@@ -1,104 +1,94 @@
 "use client";
 
 /**
- * The page's one set-piece: a chat that gets a computer, scrubbed by scroll.
+ * The chat that gets a computer, as a docked widget.
  *
- * It sits between the hero and "Husk does two things" and carries no heading
- * of its own, because it is not a tenth section — it is the animated form of
- * the story those two already tell in prose. Four beats:
+ * It sits bottom-left behind a launcher, the way a support chat does, and
+ * fills itself as the reader scrolls past the top of the page: the install
+ * command types into the composer, it sends, the tools attach, real output
+ * lands, and the launcher's core lights. Scroll past and it folds back to the
+ * icon. Clicking the icon opens it at any time.
  *
- *   1. an empty chat, caret waiting
- *   2. the install command typing itself into the composer
- *   3. the command sent, tool calls firing, real output landing
- *   4. the chat coming apart, its pieces converging into the husk mark
+ * Why it moved out of the middle of the page
+ * ------------------------------------------
+ * It used to be a pinned, full-viewport stage between the hero and "Husk does
+ * two things", which meant the page's centre was occupied by a set-piece the
+ * reader had to scroll through rather than read past. Docking it gives that
+ * space back to the prose and costs the sequence nothing — the scrub is the
+ * same scrub, it just plays in a 22rem panel instead of across the viewport.
  *
  * Nothing here is invented. The command is `MCP_COMMAND`, the same string the
- * hero's install block sets. The tool names are `MCP_TOOLS`. The transcript is
- * the `uname -sr` / note.txt exchange out of `TRANSCRIPT`, which ran on a real
- * machine. This site's whole argument is that it shows real output; a fake
- * transcript in the one animated moment would be the worst possible place to
- * break that.
+ * hero's install block sets. The transcript is the `uname -sr` / note.txt
+ * exchange out of `TRANSCRIPT`, which ran on a real machine. The four tool
+ * names come from `MCP_TOOLS` and are captioned "the conversation now has",
+ * not "these fired" — the exchange below them is three shell calls, and four
+ * names over it would imply four tools ran.
  *
  * Why scroll and not time
  * -----------------------
  * A headline that types itself is lying about latency. A transcript being
  * dragged by the scrollbar is a diagram: the reader sets the clock, it runs
- * backwards as readily as forwards, and it cannot claim anything about how
- * long the real thing takes.
+ * backwards as readily as forwards, and it claims nothing about how long the
+ * real thing takes. See `brand/UI-PRINCIPLES.md` §3, "Scroll as a clock".
  *
  * SEO, no-JS, and the hiding problem
  * ----------------------------------
- * Every line of that content is real text, server-rendered, visible on
- * arrival. The initial states that beats 1-3 animate *from* live behind
- * `[data-anim="on"]`, and that attribute is set by script after mount — so a
- * crawler, a reader with JS off, and a failed hydration all get the whole
- * transcript as a plain readable block instead of a stack of opacity: 0.
- *
- * GSAP is imported inside the effect rather than at module scope. The brief
- * for this asked for `next/dynamic` with `ssr: false`, which would have taken
- * the text out of the HTML along with the animation; importing the library
- * lazily keeps the payload off the critical path and the content in the
- * document, which is what `ssr: false` was being asked for in the first place.
+ * There is one copy of this content and it ships in the document, visible, in
+ * the page flow. `[data-anim="on"]` — set by script after mount — is what
+ * lifts that same element out of the flow and into the fixed dock. A crawler,
+ * a reader with JS off, a failed hydration and anyone who asked for less
+ * motion all get a plain readable transcript in the body of the page instead
+ * of a floating widget they cannot open.
  */
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import { HuskMark } from "@/components/Logo";
 import { MCP_COMMAND, MCP_TOOLS, TRANSCRIPT } from "@/lib/content";
-import { CORE_OUTLINE, FLAP_OUTLINE, SHELL_OUTLINE, type Vec2 } from "@/lib/husk-pod";
 
-/* What the one line adds to the conversation -- not what this exchange fired.
-   The exchange below is three shell calls; captioning it with four tool names
-   would imply four tools ran, which is the kind of small lie this site does
-   not get to tell. The heading above the list says "now has" for that reason.
-   Names come from MCP_TOOLS so a rename upstream cannot leave this animating
-   a tool that no longer exists. */
 const USED_TOOLS = ["shell", "read_file", "write_file", "expose_port"] as const;
 const toolWhat = (name: string) => MCP_TOOLS.find((t) => t.name === name)?.what ?? "";
 
-/* The exchange, lifted from TRANSCRIPT by matching its text rather than by
-   index -- an index would silently animate the wrong three lines the first
-   time anyone adds a command to that array. */
+/* Lifted from TRANSCRIPT by matching its text rather than by index — an index
+   would silently animate the wrong three lines the first time anyone adds a
+   command to that array. */
 const EXCHANGE = (() => {
   const i = TRANSCRIPT.findIndex((l) => l.text.includes("uname -sr"));
   return i === -1 ? [] : TRANSCRIPT.slice(i, i + 3);
 })();
 
-const MARK_SIZE = 32;
-function markPath(outline: Vec2[]): string {
-  return (
-    outline
-      .map(([x, y], i) => {
-        const px = MARK_SIZE / 2 + x * (MARK_SIZE / 2);
-        const py = MARK_SIZE / 2 - y * (MARK_SIZE / 2);
-        return `${i === 0 ? "M" : "L"}${px.toFixed(2)} ${py.toFixed(2)}`;
-      })
-      .join(" ") + " Z"
-  );
-}
-
 export function ScrollNarrative() {
   const section = useRef<HTMLElement>(null);
-  const stage = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  /* Set once the reader clicks the launcher. From then on the scroll no longer
+     closes it — they asked for it open, and having it shut itself under them
+     would be the widget arguing with the person using it. */
+  const pinnedOpen = useRef(false);
+
+  const toggle = useCallback(() => {
+    setOpen((v) => {
+      pinnedOpen.current = !v;
+      return !v;
+    });
+  }, []);
 
   useEffect(() => {
     const root = section.current;
-    const stageEl = stage.current;
-    if (!root || !stageEl) return;
-
+    if (!root) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     let cancelled = false;
     let cleanup: (() => void) | undefined;
 
-    /* Near-viewport before the library is fetched. On a reader who never
-       scrolls this far, GSAP is never downloaded at all. */
+    /* Near-viewport before the library is fetched. A reader who never scrolls
+       this far never downloads GSAP. */
     const io = new IntersectionObserver(
       (entries) => {
         if (!entries.some((e) => e.isIntersecting)) return;
         io.disconnect();
         void start();
       },
-      { rootMargin: "300px 0px" },
+      { rootMargin: "400px 0px" },
     );
     io.observe(root);
 
@@ -107,40 +97,48 @@ export function ScrollNarrative() {
         import("gsap"),
         import("gsap/ScrollTrigger"),
       ]);
-      if (cancelled || !root || !stageEl) return;
+      if (cancelled || !root) return;
       gsap.registerPlugin(ScrollTrigger);
 
       root.dataset.anim = "on";
 
       const q = gsap.utils.selector(root);
       const typed = q(".nr-typed")[0] as HTMLElement | undefined;
+      const panel = q(".nr-panel")[0] as HTMLElement | undefined;
+      /* The transcript is taller than the panel by the time the output lands,
+         so the panel follows its own latest line -- which is what a chat does,
+         and without it the last line arrives below the fold of a 22rem box. */
+      const toBottom = () => {
+        if (panel) panel.scrollTop = panel.scrollHeight;
+      };
       const full = MCP_COMMAND;
       /* Ships with the command in it, for the no-JS reader. The timeline owns
-         it from here, and its first tick is at progress 0 -- which may be a
-         scroll event away, so empty it now rather than flashing the finished
-         string. */
+         it from here, and its first tick may be a scroll event away. */
       if (typed) typed.textContent = "";
 
       const ctx = gsap.context(() => {
         const tl = gsap.timeline({
           scrollTrigger: {
             trigger: root,
-            start: "top top",
-            /* An explicit distance, with pinSpacing on, so ScrollTrigger owns
-               the scroll length. The first build gave the section a fixed
-               300vh and turned pinSpacing off, which double-counted: "bottom
-               bottom" then resolved 900px before the timeline finished and the
-               pin released mid-beat-four. It also left a reader with JS off
-               scrolling through two viewports of empty section. */
-            end: "+=2400",
-            pin: stageEl,
+            /* No pin. The widget is fixed, so it does not need the page held
+               still underneath it — which is the whole reason the centre of
+               the page is free again. */
+            start: "top 85%",
+            /* Long enough that the last beat lands well before the trigger
+               goes inactive. At +=1500 the timeline's own duration ran right
+               to the boundary, so the panel folded shut while the transcript
+               was still filling and the launcher never lit. */
+            end: "+=2200",
             scrub: 0.6,
             invalidateOnRefresh: true,
+            onToggle: (self) => {
+              if (pinnedOpen.current) return;
+              setOpen(self.isActive);
+            },
           },
         });
 
-        // Beat 2 -- the command types itself. Stepped, so each frame lands on a
-        // whole character and the caret never sits mid-glyph.
+        // The command types itself.
         tl.to(
           { i: 0 },
           {
@@ -153,88 +151,40 @@ export function ScrollNarrative() {
               typed.textContent = full.slice(0, n);
             },
           },
-          0.15,
+          0.2,
         );
 
-        // Beat 3 -- sent, then the tools, then the output.
-        tl.to(q(".nr-composer"), { opacity: 0.35, duration: 0.2 }, 1.3);
-        tl.fromTo(
-          q(".nr-sent"),
-          { opacity: 0, y: 14 },
-          { opacity: 1, y: 0, duration: 0.3 },
-          1.3,
-        );
+        // Sent, then what the line added, then the output.
+        tl.to(q(".nr-composer"), { opacity: 0.3, duration: 0.2 }, 1.35);
+        tl.fromTo(q(".nr-sent"), { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.3 }, 1.35);
+        tl.fromTo(q(".nr-gained"), { opacity: 0 }, { opacity: 1, duration: 0.25 }, 1.6);
         tl.fromTo(
           q(".nr-tool"),
-          { opacity: 0, y: 10 },
-          { opacity: 1, y: 0, duration: 0.28, stagger: 0.14 },
-          1.6,
+          { opacity: 0, x: -8 },
+          { opacity: 1, x: 0, duration: 0.26, stagger: 0.13 },
+          1.7,
         );
         tl.fromTo(
           q(".nr-line"),
           { opacity: 0, x: -8 },
-          { opacity: 1, x: 0, duration: 0.24, stagger: 0.12 },
-          2.25,
+          { opacity: 1, x: 0, duration: 0.24, stagger: 0.12, onUpdate: toBottom },
+          2.35,
         );
-
-        // Beat 4 -- the chat comes apart and the mark assembles out of it.
-        tl.to(q(".nr-chat"), { opacity: 0, scale: 0.94, duration: 0.5 }, 3.1);
+        // The machine is attached, and the launcher's core lights to say so.
         tl.fromTo(
-          q(".nr-mark"),
-          { opacity: 0, scale: 0.72 },
-          { opacity: 1, scale: 1, duration: 0.6 },
-          3.25,
+          q(".nr-attached"),
+          { opacity: 0, y: 8 },
+          { opacity: 1, y: 0, duration: 0.35, onUpdate: toBottom },
+          3.0,
         );
-        /* Each piece converges from where it would be if the chat had come
-           apart -- same motif as the hero object, same three outlines. */
-        tl.fromTo(
-          q(".nr-piece-shell"),
-          { xPercent: -34, yPercent: 10, rotate: -12, opacity: 0 },
-          { xPercent: 0, yPercent: 0, rotate: 0, opacity: 1, duration: 0.6 },
-          3.25,
-        );
-        tl.fromTo(
-          q(".nr-piece-flap"),
-          { xPercent: 38, yPercent: -12, rotate: 16, opacity: 0 },
-          { xPercent: 0, yPercent: 0, rotate: 0, opacity: 1, duration: 0.6 },
-          3.3,
-        );
-        tl.fromTo(
-          q(".nr-piece-core"),
-          { scaleY: 0.2, opacity: 0 },
-          { scaleY: 1, opacity: 1, duration: 0.45 },
-          3.55,
-        );
-        tl.fromTo(
-          q(".nr-caption"),
-          { opacity: 0, y: 10 },
-          { opacity: 1, y: 0, duration: 0.35 },
-          3.7,
-        );
+        tl.to(root, { "--nr-lit": 1, duration: 0.4 }, 3.0);
+        /* Trailing slack. The story finishes around 78% of the scrub and the
+           rest is the reader looking at a finished panel, rather than the last
+           line arriving at the same instant the dock closes. */
+        tl.to({}, { duration: 1.1 }, 3.4);
       }, root);
 
-      /**
-       * The anchor the mark converges on is measured, never hardcoded.
-       *
-       * ScrollTrigger fires `refresh` on resize, on breakpoint changes and
-       * whenever the pin is recalculated, so this re-reads the stage box each
-       * time and re-points the transform origin at its real centre. A fixed
-       * coordinate is right at exactly one viewport width.
-       */
-      const anchor = () => {
-        const r = stageEl.getBoundingClientRect();
-        const markEl = q(".nr-mark")[0] as HTMLElement | undefined;
-        if (!markEl || r.width === 0) return;
-        const m = markEl.getBoundingClientRect();
-        const ox = r.width / 2 - (m.left - r.left);
-        const oy = r.height / 2 - (m.top - r.top);
-        markEl.style.transformOrigin = `${ox.toFixed(1)}px ${oy.toFixed(1)}px`;
-      };
-      anchor();
-      ScrollTrigger.addEventListener("refresh", anchor);
-
       cleanup = () => {
-        ScrollTrigger.removeEventListener("refresh", anchor);
         ctx.revert();
         delete root.dataset.anim;
         if (typed) typed.textContent = full;
@@ -249,12 +199,44 @@ export function ScrollNarrative() {
   }, []);
 
   return (
-    <section ref={section} className="narrative" aria-label="How the install goes">
-      <div ref={stage} className="narrative-stage">
-        <div className="nr-chat">
+    <section
+      ref={section}
+      className="narrative"
+      aria-label="What one line of install does to a chat"
+    >
+      <div className="nr-dock" data-open={open ? "true" : "false"}>
+        <button
+          type="button"
+          className="nr-launcher"
+          aria-expanded={open}
+          aria-controls="nr-panel"
+          onClick={toggle}
+        >
+          <HuskMark size={24} />
+          <span className="nr-launcher-label">
+            {open ? "Hide the transcript" : "What one line does"}
+          </span>
+        </button>
+
+        <div className="nr-panel" id="nr-panel">
           <div className="nr-head">
-            <span className="nr-dot" aria-hidden="true" />
             <span className="nr-title">a chat, before and after one line</span>
+            <button
+              type="button"
+              className="nr-close"
+              onClick={toggle}
+              aria-label="Hide the transcript"
+            >
+              <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+                <path
+                  d="M2 2 L10 10 M10 2 L2 10"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              </svg>
+            </button>
           </div>
 
           <div className="nr-body">
@@ -280,23 +262,17 @@ export function ScrollNarrative() {
                 </span>
               ))}
             </pre>
+
+            <p className="nr-attached">
+              <span className="nr-attached-dot" aria-hidden="true" />a computer, for the
+              rest of the conversation
+            </p>
           </div>
 
           <div className="nr-composer">
             <span className="nr-typed">{MCP_COMMAND}</span>
             <span className="nr-caret" aria-hidden="true" />
           </div>
-        </div>
-
-        {/* The mark, assembling out of what the chat came apart into. Same
-            three outlines as the hero object, from the same tables. */}
-        <div className="nr-mark" aria-hidden="true">
-          <svg viewBox={`0 0 ${MARK_SIZE} ${MARK_SIZE}`} focusable="false">
-            <path className="nr-piece nr-piece-shell" d={markPath(SHELL_OUTLINE)} />
-            <path className="nr-piece nr-piece-flap" d={markPath(FLAP_OUTLINE)} />
-            <path className="nr-piece nr-piece-core" d={markPath(CORE_OUTLINE)} />
-          </svg>
-          <p className="nr-caption">a computer, for the rest of the conversation</p>
         </div>
       </div>
     </section>

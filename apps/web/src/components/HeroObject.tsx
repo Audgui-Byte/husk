@@ -40,7 +40,6 @@ const FALLBACK: PodColors = {
   shellDeep: "#a97c46",
   coreLit: "#42d0cf",
   coreRim: "#8be9e7",
-  glyph: "#1b1611",
 };
 
 /**
@@ -60,7 +59,6 @@ function readColors(theme: string): PodColors {
     shellDeep: read("--color-primary-500", FALLBACK.shellDeep),
     coreLit: read("--color-accent-300", FALLBACK.coreLit),
     coreRim: read("--color-accent-200", FALLBACK.coreRim),
-    glyph: read("--color-surface", FALLBACK.glyph),
   };
 }
 
@@ -95,7 +93,7 @@ const themeServerSnapshot = () => "auto";
 
 /** The description a screen reader gets instead of the object. */
 const LABEL =
-  "The Husk mark, opened: a heavy shell and a peeled flap with the lit core between them, beside a terminal caret.";
+  "A husk, opened: two ribbed shell halves drawn apart around a lit kernel.";
 
 export function HeroObject() {
   const box = useRef<HTMLDivElement>(null);
@@ -166,7 +164,7 @@ export function HeroObject() {
       {reduced || !mounted ? (
         <HeroPodStatic />
       ) : (
-        <HeroPod colors={colors} running={visible} pointer={pointer} onOpened={onOpened} />
+        <HeroPod colors={colors} pointer={pointer} onOpened={onOpened} />
       )}
     </div>
   );

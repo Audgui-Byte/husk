@@ -193,13 +193,10 @@ already say in prose, which is why it has no heading of its own.
    looping animation is a permanent low-grade demand on attention with no
    information in it, and that sentence is still the test.
 
-   Three things pass it, and they are the whole list:
+   Two things pass it, and they are the whole list:
 
    - **An indeterminate spinner**, which must appear only after 400ms of actual
      waiting and must disappear the instant it can be replaced by a real number.
-   - **A terminal caret.** A caret blinks because it is waiting for input;
-     one that does not blink is a caret that has stopped waiting. It is the
-     same signal as the spinner and it is as old as the terminal.
    - **The provider orbit's outer ring**, and this one is the marginal case.
      It is decorative: a dashed circle turning once every 140 seconds, carrying
      nothing. It is here because the alternative was drifting the provider
@@ -207,8 +204,11 @@ already say in prose, which is why it has no heading of its own.
      miss. If anything in this section is ever cut for failing its own test,
      cut this first.
 
-   Note what is *not* on the list. The hero's core does not pulse and does not
-   breathe. Nothing on either site idles.
+   Note what is *not* on the list. The hero's kernel does not pulse and does
+   not breathe, and no caret blinks: an earlier draft of this clause permitted
+   a blinking terminal caret in the hero object, the caret was cut with the
+   glyph it sat in, and a permission for something nothing does is how a rule
+   file starts drifting from the code. Nothing on either site idles.
 
 5. **Number count-ups.** A number that spins from 0 to its value is unreadable
    for the duration of the animation and is usually decorating a metric nobody

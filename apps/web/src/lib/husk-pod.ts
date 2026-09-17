@@ -1,156 +1,169 @@
 /**
- * The hero object's geometry, shared by the WebGL scene and the SVG it falls
- * back to — one description, so the two cannot drift into different objects.
+ * The hero object's geometry: a husk, with walls, that opens.
  *
- * What it is
- * ----------
- * `brand/logo/USAGE.md` calls the mark "a split husk with a lit core", and
- * `Logo.tsx` says of its two shell paths that "the asymmetry is load-bearing":
- * one heavy half, one peeled flap, and a blade between them that is also a
- * caret. This is that mark given depth. Not a pod invented to put something in
- * the hero — which is the whole difference between an object that means
- * something and a rotating sphere.
+ * Shared by the WebGL scene and the SVG it falls back to, so the two are one
+ * object rather than two drawings that drift apart.
  *
- * The three polygons below are `Logo.tsx`'s path data, unchanged, converted
- * from the mark's 32x32 viewBox into a centred unit space: x right, y up,
- * origin at the middle. Every vertex is a straight line in the original, so
- * they extrude exactly, with no curve fitting and nothing redrawn by hand.
- *
- * Why extruded outlines and not a lathe
+ * What it is, and what it stopped being
  * -------------------------------------
- * The first build revolved a husk profile and split the revolution in two.
- * Head-on, an open half-shell shows you its concave inside, which fills the
- * whole silhouette as a flat blob and hides the core behind it — the one thing
- * the opening exists to reveal. Extruding the mark's own outlines gives solid,
- * capped pieces instead: nothing is hollow, so nothing can swallow the core,
- * and the object is recognisably the logo from the first frame.
+ * A seed husk: a ribbed pod with a real wall, split along a seam that faces
+ * the reader, opening to show the cavity and the lit kernel inside. It is not
+ * the logo. The mark is already in the header, in the footer and at the end of
+ * the scroll sequence; a fourth copy in the hero was repetition, and a product
+ * called Husk should have something husk-shaped in it.
+ *
+ * Two earlier builds are worth recording, because the second failure is the
+ * one that produced this file:
+ *
+ *   1. A lathe, split into two arcs. Head-on, an open lathe surface shows you
+ *      its concave inside, which fills the silhouette as a flat blob and hides
+ *      the thing the opening exists to reveal.
+ *   2. The mark's own paths, extruded. Solid, so the blob problem went away —
+ *      but it is the logo, which is the note this file is answering.
+ *
+ * The blob was never about lathes. It was about *thickness*: a surface with no
+ * wall has no inside to see. Each half here is a closed solid — an outer
+ * surface, an inner surface, and a cap at each end of its arc joining the two.
+ * When it parts you see the wall's edge and the cavity behind it, which is
+ * what makes it read as something that grew rather than something extruded.
  */
 
 export type Vec2 = [number, number];
 export type Vec3 = [number, number, number];
 
-/** The mark's viewBox is 32x32 with y growing down. This space is centred, y up. */
-function fromMark(points: Array<[number, number]>): Vec2[] {
-  return points.map(([x, y]) => [(x - 16) / 16, (16 - y) / 16]);
-}
+/**
+ * The husk silhouette, revolved around Y: radius against height, bottom to
+ * top. Widest below the equator and drawn to a point at each end — a seed,
+ * not an egg. The poles sit at r = 0, so the outer and inner surfaces meet
+ * there and each half closes without needing a cap.
+ */
+export const PROFILE: Vec2[] = [
+  [0.0, -1.02],
+  [0.14, -0.96],
+  [0.3, -0.84],
+  [0.44, -0.66],
+  [0.535, -0.42],
+  [0.585, -0.14],
+  [0.593, 0.14],
+  [0.558, 0.42],
+  [0.472, 0.66],
+  [0.34, 0.85],
+  [0.18, 0.97],
+  [0.0, 1.05],
+];
 
-/** "Shell: the heavy half of the husk." */
-export const SHELL_OUTLINE: Vec2[] = fromMark([
-  [13, 1.5],
-  [3.5, 9],
-  [1.5, 19],
-  [9, 30.5],
-  [17, 28],
-  [13.5, 22],
-  [12.5, 15.5],
-  [15.5, 8.5],
-  [20, 4],
-]);
+/** How much of the outer radius is wall. Tapers to nothing at the poles. */
+export const WALL = 0.17;
 
-/** "Flap: the peeled half. The asymmetry is load-bearing." */
-export const FLAP_OUTLINE: Vec2[] = fromMark([
-  [23.5, 3],
-  [30, 10],
-  [30.5, 20],
-  [26, 27.5],
-  [23.5, 20],
-  [23.8, 11],
-]);
+/** Flutes running down the husk, so the surface reads as grown, not moulded. */
+export const RIB_COUNT = 11;
+export const RIB_DEPTH = 0.035;
 
-/** "Core: one asymmetric blade. It is also a caret." */
-export const CORE_OUTLINE: Vec2[] = fromMark([
-  [18.2, 9.5],
-  [21, 15],
-  [18.8, 26.5],
-  [15.5, 15.5],
-]);
+/** Segments per half, around the arc. */
+export const SEGMENTS = 28;
 
-/** Extrusion depth and bevel, in the same unit space. */
-export const DEPTH = 0.3;
-export const BEVEL = 0.035;
+const TAU = Math.PI * 2;
 
 /**
- * How each piece sits when the husk is shut, relative to where the mark puts
- * it. Open is the mark itself — the logo is the settled state, which is what
- * makes the sequence an arrival rather than a departure.
- *
- * The flap swings about Y on a pivot at its own inner edge, so it peels rather
- * than slides. The shell leans in a little; it is the half that stays.
+ * The seam sits at +Z — straight at the camera — so the husk parts towards the
+ * reader instead of turning to show them a gap. The two arcs are unequal
+ * because a husk does not split down the middle, and because the mark's own
+ * asymmetry is load-bearing (`Logo.tsx`).
  */
-export interface Piece {
-  id: "shell" | "flap";
-  /** Pivot on X, in unit space. Rotation about Y happens around this. */
-  pivotX: number;
-  /** Yaw when shut. Open is always 0. */
-  closedYaw: number;
-  /** Roll when shut. */
-  closedTilt: number;
-  /** Offset when shut. */
-  closedOffset: Vec3;
+const SEAM = Math.PI / 2;
+
+export interface Half {
+  id: "front" | "back";
+  phiStart: number;
+  phiLength: number;
+  /** Radians it swings open about Y. This is what uncovers the kernel. */
+  openYaw: number;
+  /** A little roll, so the two do not part like a machine. */
+  openRoll: number;
+  openOffset: Vec3;
 }
 
-export const PIECES: Piece[] = [
+/**
+ * Tuned by looking at it. The first pass yawed each half by 38 degrees about
+ * the origin, which is too much: an arc of nearly 200 degrees swings its whole
+ * body across the centre line, so the two halves ended up side by side with
+ * their backs to each other and the kernel behind both of them. The opening
+ * has to *uncover* something.
+ *
+ * So most of the parting is translation now, with enough yaw left to turn the
+ * cavity towards the reader and catch the inner wall in the key light.
+ */
+export const HALVES: Half[] = [
   {
-    id: "shell",
-    pivotX: (13 - 16) / 16,
-    closedYaw: -0.34,
-    closedTilt: 0.07,
-    closedOffset: [0.2, -0.02, 0.0],
+    id: "front",
+    phiStart: SEAM,
+    phiLength: TAU * 0.54,
+    openYaw: 0.3,
+    openRoll: -0.08,
+    openOffset: [-0.37, -0.02, 0.05],
   },
   {
-    id: "flap",
-    pivotX: (23.5 - 16) / 16,
-    closedYaw: 1.15,
-    closedTilt: -0.13,
-    closedOffset: [-0.34, 0.02, 0.0],
+    id: "back",
+    phiStart: SEAM + TAU * 0.54,
+    phiLength: TAU * 0.46,
+    openYaw: -0.24,
+    openRoll: 0.11,
+    openOffset: [0.34, 0.03, 0.02],
   },
 ];
 
-/** The core is hidden inside the shut husk and rises as it opens. */
-export const CORE_CLOSED: Vec3 = [-0.16, -0.14, -0.1];
-export const CORE_CLOSED_SCALE = 0.34;
+/** The kernel: where it sits shut, and how small it is before it grows. */
+export const KERNEL_CLOSED_Y = -0.08;
+export const KERNEL_OPEN_Y = 0.04;
+export const KERNEL_CLOSED_SCALE = 0.42;
+export const KERNEL_RADIUS = 0.33;
 
-/** The terminal glyph's resting place, beside the open core. */
-export const GLYPH_OFFSET: Vec3 = [1.34, 0.08, 0.14];
+/** Outer radius at a point on the profile, with the flutes applied. */
+export function outerRadius(r: number, phi: number): number {
+  return r * (1 + RIB_DEPTH * Math.cos(RIB_COUNT * phi));
+}
+
+/** Inner radius. The wall tapers with the profile, so the tips stay solid. */
+export function innerRadius(r: number): number {
+  return r * (1 - WALL);
+}
 
 /**
- * A piece's transform at a given openness, 0 shut and 1 open. Written once so
- * the SVG and the scene cannot disagree about where anything ends up.
+ * A half's transform at a given openness, 0 shut and 1 open. One function, so
+ * the scene and the SVG cannot disagree about where a piece ends up.
  */
-export function pieceTransform(piece: Piece, open: number) {
-  const k = 1 - open;
+export function halfTransform(half: Half, open: number) {
   return {
-    yaw: piece.closedYaw * k,
-    tilt: piece.closedTilt * k,
+    yaw: half.openYaw * open,
+    roll: half.openRoll * open,
     offset: [
-      piece.closedOffset[0] * k,
-      piece.closedOffset[1] * k,
-      piece.closedOffset[2] * k,
+      half.openOffset[0] * open,
+      half.openOffset[1] * open,
+      half.openOffset[2] * open,
     ] as Vec3,
-    pivotX: piece.pivotX,
   };
 }
 
-/** Apply that transform to one point. Yaw about Y at the pivot, then roll. */
-export function applyPiece(piece: Piece, p: Vec2, open: number): Vec3 {
-  const t = pieceTransform(piece, open);
-  const dx = p[0] - t.pivotX;
+/** Apply that transform to one point: yaw about Y, then roll about Z. */
+export function applyHalf(half: Half, p: Vec3, open: number): Vec3 {
+  const t = halfTransform(half, open);
   const cy = Math.cos(t.yaw);
   const sy = Math.sin(t.yaw);
-  let x = t.pivotX + dx * cy;
-  const z = -dx * sy;
+  const x1 = p[0] * cy + p[2] * sy;
+  const z1 = -p[0] * sy + p[2] * cy;
 
-  const ct = Math.cos(t.tilt);
-  const st = Math.sin(t.tilt);
-  const y = p[1];
-  const x2 = x * ct - y * st;
-  const y2 = x * st + y * ct;
-  x = x2;
+  const cr = Math.cos(t.roll);
+  const sr = Math.sin(t.roll);
+  const x2 = x1 * cr - p[1] * sr;
+  const y2 = x1 * sr + p[1] * cr;
 
-  return [x + t.offset[0], y2 + t.offset[1], z + t.offset[2]];
+  return [x2 + t.offset[0], y2 + t.offset[1], z1 + t.offset[2]];
 }
 
-/** The outline for a piece id, so callers do not index two parallel arrays. */
-export function outlineFor(id: Piece["id"]): Vec2[] {
-  return id === "shell" ? SHELL_OUTLINE : FLAP_OUTLINE;
+/** A point on a half's outer surface. `u` walks its arc, `i` the profile. */
+export function outerPoint(half: Half, i: number, u: number): Vec3 {
+  const [r, y] = PROFILE[i];
+  const phi = half.phiStart + half.phiLength * u;
+  const rr = outerRadius(r, phi);
+  return [Math.cos(phi) * rr, y, Math.sin(phi) * rr];
 }

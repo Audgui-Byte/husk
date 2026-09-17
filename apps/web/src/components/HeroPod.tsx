@@ -1,28 +1,40 @@
 "use client";
 
 /**
- * The hero object: the husk, opening.
+ * The hero object: a husk, opening.
  *
  * What it depicts
  * ---------------
- * The brand mark in three dimensions — a heavy shell, a peeled flap, and the
- * blade between them. It plays once on arrival: shut, then the seam parts, the
- * flap peels back, and the core rises and lights. After that it holds its open
- * pose and tracks the pointer within a few degrees. The geometry lives in
- * `lib/husk-pod.ts`, shared with the SVG this degrades to.
+ * A ribbed seed husk with a real wall, split on a seam that faces the reader.
+ * It plays once on arrival — shut, then the seam parts, the two halves draw
+ * back far enough to show the cavity and the wall's edge, and the kernel
+ * inside grows and lights. After that it holds and tracks the pointer within a
+ * few degrees. Geometry is in `lib/husk-pod.ts`, shared with the SVG this
+ * degrades to.
+ *
+ * There was a small floating terminal glyph beside it, tying the husk to the
+ * computer. It came out: it sat at the very edge of the frame and clipped at
+ * the hero's real column width, and with the pod reading plainly organic a
+ * 40px rectangle in the corner was clutter rather than signal. The page says
+ * "computer" in the headline, in the install command and in the chat docked at
+ * the bottom of it; the object does not have to say it a fourth time.
  *
  * Budget
  * ------
- * Two lathes at 12 profile points by 18 segments, a twelve-triangle core, a
- * glyph plane and 48 points: about 1.1k triangles, four lights, one bloom
- * pass, DPR capped at 1.75.
+ * Two shells at 28 segments by 12 profile points, each a closed solid: about
+ * 2.6k triangles between them. A 320-triangle kernel, 48 points, four lights
+ * and one additive quad for the glow, with DPR capped at 1.75.
  *
- * The loop runs while the hero is on screen and not at all otherwise, because
- * the caret blinks and a blink needs frames. What keeps that honest is the
- * parent: it unmounts this canvas entirely once the hero is clear of the
- * viewport, so the cost is bounded to the first screen and the page never
- * holds two WebGL contexts at once — the isolation viewer further down owns
- * the other one.
+ * The loop runs while this canvas is mounted, and the parent is what bounds
+ * that: `HeroObject` unmounts the whole thing once the hero is clear of the
+ * viewport, so the cost stops at the first screen and the page never holds two
+ * WebGL contexts at once — the isolation viewer further down owns the other.
+ *
+ * `frameloop` is "always" rather than gated on a `running` prop, and that is
+ * deliberate: the canvas is a lazy chunk, and a scene that mounted while the
+ * hero was briefly out of view landed in "demand" and never advanced past the
+ * first frame. Once the husk is open nothing moves but the pointer tracking,
+ * which settles, so an idle loop here costs a cleared buffer.
  */
 
 import { useEffect, useMemo, useRef } from "react";
@@ -30,17 +42,17 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
 import {
-  BEVEL,
-  CORE_CLOSED,
-  CORE_CLOSED_SCALE,
-  CORE_OUTLINE,
-  DEPTH,
-  GLYPH_OFFSET,
-  PIECES,
-  outlineFor,
-  pieceTransform,
-  type Piece,
-  type Vec2,
+  HALVES,
+  KERNEL_CLOSED_SCALE,
+  KERNEL_CLOSED_Y,
+  KERNEL_OPEN_Y,
+  KERNEL_RADIUS,
+  PROFILE,
+  SEGMENTS,
+  halfTransform,
+  innerRadius,
+  outerRadius,
+  type Half,
 } from "@/lib/husk-pod";
 
 export interface PodColors {
@@ -48,50 +60,102 @@ export interface PodColors {
   shellDeep: string;
   coreLit: string;
   coreRim: string;
-  glyph: string;
 }
 
 export interface HeroPodProps {
   colors: PodColors;
-  /** True while the loop may run. The parent gates this on visibility. */
-  running: boolean;
-  /** Pointer position within the hero box, -1..1 on each axis. The ref itself,
-      not its value: the parent mutates it on pointermove, and reading .current
-      during the parent's render would be reading a ref during render. */
+  /** The ref itself, not its value — the parent mutates it on pointermove. */
   pointer: React.RefObject<{ x: number; y: number }>;
-  /** Called once, when the opening sequence has finished. */
   onOpened: () => void;
-  /** Skip the sequence and start open, for a reader who arrives scrolled. */
   startOpen?: boolean;
 }
 
-const OPEN_SECONDS = 1.85;
+const OPEN_SECONDS = 2.1;
 const DUST_COUNT = 48;
 
 /* -----------------------------------------------------------------------------
-   Geometry, built once per mount.
+   One half of the husk, as a closed solid.
 
-   One extruded outline per piece, bevelled so the edges catch the rim light
-   rather than going to a hard black line. Each is centred on its own pivot so
-   `rotation.y` on the mesh swings it about that edge without a wrapper group.
+   Outer surface, inner surface, and a cap at each end of the arc joining the
+   two. The caps are the whole point: they are the wall's edge, and they are
+   what the reader sees when it opens. A surface with no thickness has no
+   inside to show, which is how the first two builds of this ended up looking
+   like a flat blob and like the logo respectively.
+
+   Indexed, with the two surfaces sharing no vertices with the caps — a cap
+   needs its own normals or the flutes smear across the rim.
 -------------------------------------------------------------------------------- */
 
-function buildExtrusion(outline: Vec2[], pivotX = 0) {
-  const shape = new THREE.Shape();
-  outline.forEach(([x, y], i) => {
-    if (i === 0) shape.moveTo(x - pivotX, y);
-    else shape.lineTo(x - pivotX, y);
-  });
-  shape.closePath();
-  const geo = new THREE.ExtrudeGeometry(shape, {
-    depth: DEPTH,
-    bevelEnabled: true,
-    bevelThickness: BEVEL,
-    bevelSize: BEVEL,
-    bevelSegments: 2,
-    curveSegments: 1,
-  });
-  geo.translate(0, 0, -(DEPTH / 2));
+function buildHalfGeometry(half: Half) {
+  const P = PROFILE.length;
+  const pos: number[] = [];
+  const idx: number[] = [];
+
+  const push = (x: number, y: number, z: number) => {
+    pos.push(x, y, z);
+    return pos.length / 3 - 1;
+  };
+
+  const ringPoint = (i: number, u: number, inner: boolean) => {
+    const [r, y] = PROFILE[i];
+    const phi = half.phiStart + half.phiLength * u;
+    const rr = inner ? innerRadius(r) : outerRadius(r, phi);
+    return [Math.cos(phi) * rr, y, Math.sin(phi) * rr] as const;
+  };
+
+  // --- the two surfaces ------------------------------------------------------
+  for (const inner of [false, true]) {
+    const base = pos.length / 3;
+    for (let s = 0; s <= SEGMENTS; s++) {
+      const u = s / SEGMENTS;
+      for (let i = 0; i < P; i++) {
+        const [x, y, z] = ringPoint(i, u, inner);
+        push(x, y, z);
+      }
+    }
+    for (let s = 0; s < SEGMENTS; s++) {
+      for (let i = 0; i < P - 1; i++) {
+        const a = base + s * P + i;
+        const b = base + s * P + i + 1;
+        const c = base + (s + 1) * P + i + 1;
+        const d = base + (s + 1) * P + i;
+        // The inner surface faces the other way, so its winding is reversed.
+        if (inner) idx.push(a, c, b, a, d, c);
+        else idx.push(a, b, c, a, c, d);
+      }
+    }
+  }
+
+  // --- the wall's edge, at both ends of the arc -------------------------------
+  for (const u of [0, 1]) {
+    const base = pos.length / 3;
+    for (let i = 0; i < P; i++) {
+      const o = ringPoint(i, u, false);
+      const n = ringPoint(i, u, true);
+      push(o[0], o[1], o[2]);
+      push(n[0], n[1], n[2]);
+    }
+    for (let i = 0; i < P - 1; i++) {
+      const a = base + i * 2;
+      const b = base + i * 2 + 1;
+      const c = base + (i + 1) * 2 + 1;
+      const d = base + (i + 1) * 2;
+      if (u === 0) idx.push(a, b, c, a, c, d);
+      else idx.push(a, c, b, a, d, c);
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/** The kernel. Low-poly and stretched, so it reads as a seed, not a ball. */
+function buildKernelGeometry() {
+  const geo = new THREE.IcosahedronGeometry(KERNEL_RADIUS, 1);
+  geo.scale(0.82, 1.55, 0.82);
   geo.computeVertexNormals();
   return geo;
 }
@@ -110,7 +174,7 @@ function buildDust() {
   };
   for (let i = 0; i < DUST_COUNT; i++) {
     const a = hash(i * 12.9898) * Math.PI * 2;
-    const r = 0.35 + hash(i * 78.233) * 0.75;
+    const r = 0.35 + hash(i * 78.233) * 0.8;
     const t = hash(i * 39.425);
     pos[i * 3] = Math.cos(a) * r;
     pos[i * 3 + 1] = -0.9 + t * 1.9;
@@ -120,9 +184,10 @@ function buildDust() {
   return { pos, seed };
 }
 
-/* The halo. A radial falloff on one quad, added to whatever is behind it --
-   the cheapest honest approximation of light coming off the core, and the only
-   thing in this scene that is not geometry. */
+/* The glow. A radial falloff on one additive quad — the cheapest honest
+   approximation of light coming off the kernel, and the reason there is no
+   postprocessing pass here: an EffectComposer writes an opaque frame, which
+   put a hard-edged rectangle behind a canvas this hero needs transparent. */
 const HALO_VERT = /* glsl */ `
   varying vec2 vUv;
   void main() {
@@ -137,8 +202,7 @@ const HALO_FRAG = /* glsl */ `
   varying vec2 vUv;
   void main() {
     float d = length(vUv - 0.5) * 2.0;
-    // Two falloffs summed: a tight core and a wide wash, which is what a bloom
-    // pass produces and what one gaussian does not.
+    // A tight core and a wide wash, summed. One gaussian does not read as bloom.
     float tight = exp(-d * 7.0);
     float wide  = exp(-d * 2.4) * 0.35;
     float a = (tight + wide) * uStrength;
@@ -155,24 +219,24 @@ const easeOutBack = (t: number) => {
   return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2);
 };
 
-function Scene({ colors, pointer, onOpened, startOpen }: Omit<HeroPodProps, "running">) {
+function Scene({ colors, pointer, onOpened, startOpen }: HeroPodProps) {
   const root = useRef<THREE.Group>(null);
-  const shellRef = useRef<THREE.Mesh>(null);
-  const flapRef = useRef<THREE.Mesh>(null);
-  const coreRef = useRef<THREE.Mesh>(null);
-  const coreMat = useRef<THREE.MeshStandardMaterial>(null);
-  const glyphRef = useRef<THREE.Group>(null);
-  const caretRef = useRef<THREE.Mesh>(null);
-  const dustRef = useRef<THREE.Points>(null);
+  const frontRef = useRef<THREE.Mesh>(null);
+  const backRef = useRef<THREE.Mesh>(null);
+  const kernelRef = useRef<THREE.Mesh>(null);
+  const kernelMat = useRef<THREE.MeshStandardMaterial>(null);
   const haloRef = useRef<THREE.Mesh>(null);
   const haloMat = useRef<THREE.ShaderMaterial>(null);
+  const dustRef = useRef<THREE.Points>(null);
   const invalidate = useThree((s) => s.invalidate);
 
   const anim = useRef({
+    /* null until the first frame, so the clock starts when the scene actually
+       begins drawing rather than when the module evaluated. */
+    startedAt: startOpen ? 0 : (null as number | null),
     t: startOpen ? OPEN_SECONDS : 0,
-    /* Our own clock. three.js has deprecated THREE.Clock in favour of
-       THREE.Timer and `state.clock` warns once per construction; the frame
-       already hands us a delta, so neither is needed. */
+    /* Our own clock. three.js has deprecated THREE.Clock and `state.clock`
+       warns per construction; the frame already hands us a delta. */
     elapsed: 0,
     yaw: 0,
     pitch: 0,
@@ -181,9 +245,9 @@ function Scene({ colors, pointer, onOpened, startOpen }: Omit<HeroPodProps, "run
 
   const geo = useMemo(
     () => ({
-      shell: buildExtrusion(outlineFor("shell"), PIECES[0].pivotX),
-      flap: buildExtrusion(outlineFor("flap"), PIECES[1].pivotX),
-      core: buildExtrusion(CORE_OUTLINE, 0),
+      front: buildHalfGeometry(HALVES[0]),
+      back: buildHalfGeometry(HALVES[1]),
+      kernel: buildKernelGeometry(),
     }),
     [],
   );
@@ -203,9 +267,9 @@ function Scene({ colors, pointer, onOpened, startOpen }: Omit<HeroPodProps, "run
   useEffect(() => {
     const g = geo;
     return () => {
-      g.shell.dispose();
-      g.flap.dispose();
-      g.core.dispose();
+      g.front.dispose();
+      g.back.dispose();
+      g.kernel.dispose();
     };
   }, [geo]);
 
@@ -214,75 +278,54 @@ function Scene({ colors, pointer, onOpened, startOpen }: Omit<HeroPodProps, "run
     const dt = Math.min(delta, 1 / 30);
     a.elapsed += dt;
 
-    if (a.t < OPEN_SECONDS) {
-      a.t += dt;
+    /* Wall clock, not accumulated deltas. An accumulator is only correct if
+       every frame is delivered; this reaches 1 whether the loop ran sixty
+       times a second or twice, which matters because the canvas is a lazy
+       chunk mounting into a page that is still settling. */
+    if (a.startedAt === null) a.startedAt = performance.now();
+    const p = Math.min((performance.now() - a.startedAt) / (OPEN_SECONDS * 1000), 1);
+
+    if (p < 1) {
       invalidate();
     } else if (!a.announced) {
       a.announced = true;
       onOpened();
     }
 
-    // 0 shut, 1 open. The pieces lead the core by a beat, so the core rises
-    // out of something that has already parted.
-    const p = Math.min(a.t / OPEN_SECONDS, 1);
-    const open = easeOut(Math.min(p / 0.72, 1));
-    const lift = easeOutBack(Math.max(0, Math.min((p - 0.26) / 0.74, 1)));
+    // 0 shut, 1 open. The shells lead the kernel, so it grows out of something
+    // that has already parted.
+    const open = easeOut(Math.min(p / 0.7, 1));
+    const grow = easeOutBack(Math.max(0, Math.min((p - 0.3) / 0.7, 1)));
 
-    /* Open is the mark itself: at open === 1 every offset is zero and the
-       three pieces sit exactly where brand/logo puts them. The sequence is an
-       arrival at the logo, not a departure from it. */
-    for (const [ref, piece] of [
-      [shellRef, PIECES[0]],
-      [flapRef, PIECES[1]],
-    ] as [React.RefObject<THREE.Mesh | null>, Piece][]) {
+    for (const [ref, half] of [
+      [frontRef, HALVES[0]],
+      [backRef, HALVES[1]],
+    ] as [React.RefObject<THREE.Mesh | null>, Half][]) {
       const m = ref.current;
       if (!m) continue;
-      const t = pieceTransform(piece, open);
+      const t = halfTransform(half, open);
       m.rotation.y = t.yaw;
-      m.rotation.z = t.tilt;
-      m.position.set(
-        piece.pivotX + t.offset[0],
-        t.offset[1],
-        t.offset[2],
-      );
+      m.rotation.z = t.roll;
+      m.position.set(t.offset[0], t.offset[1], t.offset[2]);
     }
 
-    const core = coreRef.current;
-    if (core) {
-      const k = 1 - lift;
-      core.position.set(CORE_CLOSED[0] * k, CORE_CLOSED[1] * k, CORE_CLOSED[2] * k);
-      core.rotation.y = k * 0.5;
-      core.scale.setScalar(CORE_CLOSED_SCALE + (1 - CORE_CLOSED_SCALE) * lift);
+    const kernel = kernelRef.current;
+    if (kernel) {
+      kernel.position.y = KERNEL_CLOSED_Y + (KERNEL_OPEN_Y - KERNEL_CLOSED_Y) * grow;
+      kernel.rotation.y = 0.4 + grow * 0.5;
+      kernel.scale.setScalar(KERNEL_CLOSED_SCALE + (1 - KERNEL_CLOSED_SCALE) * grow);
     }
-    if (coreMat.current) {
-      coreMat.current.emissiveIntensity = 0.2 + 2.3 * lift;
+    if (kernelMat.current) {
+      /* 0.9, not 2.2. Above about 1.2 the kernel clips to white and stops
+         being teal or faceted -- a bright blob instead of a lit seed. The
+         glow it throws is the halo's job, not the material's. */
+      kernelMat.current.emissiveIntensity = 0.15 + 0.9 * grow;
     }
     if (haloMat.current) {
-      haloMat.current.uniforms.uStrength.value = Math.max(0, lift) * 0.5;
+      haloMat.current.uniforms.uStrength.value = Math.max(0, grow) * 0.54;
     }
-    if (haloRef.current && core) {
-      haloRef.current.position.copy(core.position);
-    }
-
-    const glyph = glyphRef.current;
-    if (glyph) {
-      const gp = Math.max(0, Math.min((p - 0.55) / 0.45, 1));
-      const g = easeOut(gp);
-      glyph.position.set(
-        GLYPH_OFFSET[0] * (0.55 + 0.45 * g),
-        GLYPH_OFFSET[1],
-        GLYPH_OFFSET[2],
-      );
-      glyph.scale.setScalar(0.001 + 0.999 * g);
-      glyph.visible = gp > 0.001;
-    }
-
-    // The caret blinks at a terminal's own rate, and only once the object is
-    // open. It is the one thing here that repeats, and it repeats because a
-    // cursor that does not blink is a cursor that is not waiting for you.
-    if (caretRef.current && p >= 1) {
-      caretRef.current.visible = Math.floor(a.elapsed * 1.6) % 2 === 0;
-      invalidate();
+    if (haloRef.current && kernel) {
+      haloRef.current.position.y = kernel.position.y;
     }
 
     if (dustRef.current) {
@@ -313,40 +356,18 @@ function Scene({ colors, pointer, onOpened, startOpen }: Omit<HeroPodProps, "run
 
   return (
     <>
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[3.2, 4.2, 4.6]} intensity={2.0} />
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[3.2, 4.2, 4.6]} intensity={1.9} />
       {/* The rim. Behind and below, so the husk's edge separates from the page
           instead of needing a stroke drawn round it. */}
-      <directionalLight position={[-3.6, 1.4, -4.2]} intensity={1.35} color={colors.coreRim} />
-      <directionalLight position={[0, -3.4, 1.2]} intensity={0.35} />
+      <directionalLight position={[-3.6, 1.4, -4.2]} intensity={1.3} color={colors.coreRim} />
+      <directionalLight position={[0, -3.4, 1.2]} intensity={0.4} />
 
       <group ref={root} position={[0, 0.02, 0]}>
-        <mesh ref={shellRef} geometry={geo.shell} position={[PIECES[0].pivotX, 0, 0]}>
-          <meshStandardMaterial
-            color={colors.shell}
-            roughness={0.5}
-            metalness={0.12}
-          />
-        </mesh>
-        <mesh ref={flapRef} geometry={geo.flap} position={[PIECES[1].pivotX, 0, 0]}>
-          <meshStandardMaterial
-            color={colors.shellDeep}
-            roughness={0.58}
-            metalness={0.1}
-          />
-        </mesh>
-
-        {/* The glow, and why it is not a bloom pass.
-            @react-three/postprocessing composites through an EffectComposer
-            that writes an opaque frame, which put a hard-edged dark rectangle
-            behind a canvas the whole hero depends on being transparent. It
-            also costs about 100K of JavaScript on a page whose Total Blocking
-            Time is already the thing being fixed.
-            This is one additive quad with a radial falloff: same read, no
-            render target, no second library, and it composites over the page
-            because it never touches the alpha channel. */}
-        <mesh ref={haloRef} position={CORE_CLOSED} renderOrder={-1}>
-          <planeGeometry args={[2.1, 2.1]} />
+        {/* The glow sits behind the kernel and in front of the cavity, so the
+            inner wall catches some of it. */}
+        <mesh ref={haloRef} position={[0, KERNEL_CLOSED_Y, 0]} renderOrder={-1}>
+          <planeGeometry args={[2.2, 2.2]} />
           <shaderMaterial
             ref={haloMat}
             transparent
@@ -359,47 +380,27 @@ function Scene({ colors, pointer, onOpened, startOpen }: Omit<HeroPodProps, "run
           />
         </mesh>
 
-        <mesh ref={coreRef} geometry={geo.core} position={CORE_CLOSED}>
+        <mesh ref={kernelRef} geometry={geo.kernel} position={[0, KERNEL_CLOSED_Y, 0]}>
           <meshStandardMaterial
-            ref={coreMat}
+            ref={kernelMat}
             color={colors.coreLit}
             emissive={colors.coreLit}
-            emissiveIntensity={0.15}
-            roughness={0.28}
+            emissiveIntensity={0.18}
+            roughness={0.38}
             metalness={0}
             flatShading
           />
         </mesh>
 
-        {/* The glyph: a terminal reduced to the only two things that say so,
-            a frame and a caret waiting inside it. */}
-        <group ref={glyphRef} position={GLYPH_OFFSET}>
-          <mesh>
-            <planeGeometry args={[0.58, 0.44]} />
-            <meshStandardMaterial
-              color={colors.glyph}
-              roughness={0.9}
-              metalness={0}
-              transparent
-              opacity={0.92}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-          <mesh ref={caretRef} position={[-0.21, 0.1, 0.008]}>
-            <planeGeometry args={[0.05, 0.1]} />
-            <meshBasicMaterial color={colors.coreRim} toneMapped={false} />
-          </mesh>
-          {/* Two rules where output would be. Not text -- text at this size is
-              unreadable and would be inventing a transcript. */}
-          <mesh position={[-0.1, -0.05, 0.008]}>
-            <planeGeometry args={[0.32, 0.022]} />
-            <meshBasicMaterial color={colors.shell} transparent opacity={0.5} />
-          </mesh>
-          <mesh position={[-0.15, -0.12, 0.008]}>
-            <planeGeometry args={[0.22, 0.022]} />
-            <meshBasicMaterial color={colors.shell} transparent opacity={0.32} />
-          </mesh>
-        </group>
+        {/* Both halves are solid, so neither needs DoubleSide. The inner
+            surface is real geometry with its own normals, which is what makes
+            the cavity read as a cavity. */}
+        <mesh ref={frontRef} geometry={geo.front}>
+          <meshStandardMaterial color={colors.shell} roughness={0.66} metalness={0.04} />
+        </mesh>
+        <mesh ref={backRef} geometry={geo.back}>
+          <meshStandardMaterial color={colors.shellDeep} roughness={0.72} metalness={0.03} />
+        </mesh>
 
         <points ref={dustRef}>
           <bufferGeometry>
@@ -420,21 +421,26 @@ function Scene({ colors, pointer, onOpened, startOpen }: Omit<HeroPodProps, "run
           />
         </points>
       </group>
-
     </>
   );
 }
 
-export default function HeroPod({ running, ...rest }: HeroPodProps) {
+export default function HeroPod(props: HeroPodProps) {
   return (
     <Canvas
-      frameloop={running ? "always" : "demand"}
+      /* Always, and the parent is what bounds it. Gating this on a `running`
+         prop was the bug: the canvas is a lazy chunk, and if the observer
+         reported the hero out of view in the window between mount and the
+         chunk arriving, the scene landed in "demand" and the opening sequence
+         never advanced past frame one. The cost is bounded properly instead —
+         HeroObject unmounts the whole canvas once the hero is clear. */
+      frameloop="always"
       dpr={[1, 1.75]}
-      camera={{ position: [0.3, 0.02, 4.5], fov: 33 }}
+      camera={{ position: [0.2, 0.04, 4.5], fov: 33 }}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       style={{ width: "100%", height: "100%" }}
     >
-      <Scene {...rest} />
+      <Scene {...props} />
     </Canvas>
   );
 }
