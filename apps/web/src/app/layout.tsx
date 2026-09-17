@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 
 import { SiteFooter } from "@/components/SiteFooter";
@@ -10,6 +11,19 @@ import "./globals.css";
  * is that nothing leaves your machine; a third-party font origin on the
  * homepage would contradict it in the first 200ms. The three brand faces are
  * self-hosted from /fonts — see public/fonts/README.md.
+ */
+
+/**
+ * Vercel Web Analytics is served from `/_vercel/insights/` on this origin, not
+ * a third-party host, so the property `public/fonts/README.md` argues for --
+ * no request leaving for anyone the reader did not choose to talk to -- still
+ * holds.
+ *
+ * Worth being precise, because this site says "no telemetry": that claim is
+ * about the product. `husk` the CLI phones nobody and nothing here changes it.
+ * This counts page views of a marketing site, which is a different thing from
+ * a tool reporting on its user -- but it is still measurement, and saying so
+ * is cheaper than being caught omitting it.
  */
 
 export const metadata: Metadata = {
@@ -94,6 +108,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SiteHeader />
         {children}
         <SiteFooter />
+        <Analytics />
       </body>
     </html>
   );
