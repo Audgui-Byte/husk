@@ -66,3 +66,17 @@ succeeded while doing nothing — see
 
 `CHANGELOG.md` gets the section for the version that just shipped, written for someone
 deciding whether to upgrade. The symptom they would have hit, not the files that moved.
+
+**Name everyone who contributed from outside the repo, in the CHANGELOG entry.** GitHub
+adds a "New contributors" section to release notes on its own, but only to *generated*
+ones — `--generate-notes` produces it, and a hand-written body silently does not. That is
+not hypothetical: #26 added the webhook signature tests and went uncredited through four
+releases, because `0.1.2`'s body was written by hand and nobody noticed the section was
+missing rather than empty.
+
+So the generated notes are the floor. Edit them, never replace them, and put the names in
+the CHANGELOG too — a release body can be edited by anyone with push and is not in the
+tree, while the CHANGELOG is the copy that ships and the copy `git log` can explain.
+
+`.github/release.yml` configures the categories those notes use. It exists for this
+reason, not for tidiness.
