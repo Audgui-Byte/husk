@@ -180,9 +180,11 @@ export function isolationNote(info: ComputerInfo): string {
         ? 'WSL is installed here but not answering; the user can run `wsl --shutdown` to fix it'
         : 'the user can run `wsl --install` to fix it';
     return (
-      `[husk] local computer ${info.id} running on the WINDOWS shell -- this is NOT Linux. ` +
-      `POSIX commands (ls, grep, cat, sed, chmod) are unavailable; use cmd.exe syntax, or ` +
-      `tell the user their computer is degraded rather than working around it -- ${fix}. ` +
+      `[husk] local computer ${info.id} running on cmd.exe, NOT Linux. ` +
+      `$VAR does not expand and 'single quotes' are not quotes -- those fail silently at ` +
+      `exit 0 rather than erroring, so trust nothing that depends on them. Unix tools may or ` +
+      `may not be on PATH depending on what the user has installed; check, do not assume. ` +
+      `Tell the user their computer is degraded rather than working around it -- ${fix}. ` +
       `Docker is unavailable for the same reason, since its engine runs inside WSL2. ` +
       `${guardrails}`
     );

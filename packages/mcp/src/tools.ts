@@ -1,5 +1,5 @@
 import type { Computer } from '@husk-ai/core';
-import { HuskError, PROBE_COMPUTER_INFO, clampText, formatBytes, redact } from '@husk-ai/core';
+import { HuskError, PROBE_COMPUTER_INFO, clampText, explainShellFailure, formatBytes, redact } from '@husk-ai/core';
 import { browseInComputer } from '@husk-ai/core';
 import { BROWSER_TOOLS, BROWSER_TOOL_NAMES, callBrowserTool } from './browser-tools.js';
 import { workspaceNote } from './workspace.js';
@@ -213,6 +213,12 @@ async function shell(computer: Computer, args: Record<string, unknown>): Promise
   if (r.stderr) parts.push(`[stderr]\n${r.stderr.trimEnd()}`);
   if (r.timedOut) parts.push(`[timed out after ${Math.round(r.durationMs / 1000)}s and was killed]`);
   if (r.exitCode !== 0 && !r.timedOut) parts.push(`[exit ${r.exitCode}]`);
+
+  // Attached per failure, not once per session. The note at the top of the
+  // session explains the machine; this explains the command in front of the
+  // model, which may be hundreds of turns later.
+  const why = explainShellFailure(computer.info, r.stderr);
+  if (why && r.exitCode !== 0) parts.push(why);
 
   const text = redact(parts.join('\n'));
   return r.exitCode === 0 && !r.timedOut ? ok(text) : { content: [{ type: 'text', text }], isError: true };

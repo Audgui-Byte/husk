@@ -16,6 +16,7 @@ export * from './spec.js';
 export * from './net.js';
 export * from './browse.js';
 export * from './computer-info.js';
+export * from './windows-shell.js';
 
 
 export type {

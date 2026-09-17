@@ -1,4 +1,4 @@
-import { HuskError, PROBE_COMPUTER_INFO } from '@husk-ai/core';
+import { HuskError, PROBE_COMPUTER_INFO, explainShellFailure } from '@husk-ai/core';
 import { assertCommandAllowed } from '../guard.js';
 import { defineTool } from '../types.js';
 import type { AgentTool } from '../types.js';
@@ -12,6 +12,11 @@ export interface ShellResult {
   durationMs: number;
   timedOut: boolean;
   truncated: boolean;
+  /**
+   * Why this failed, when the reason is the machine rather than the command.
+   * Only ever set on a Windows host that could not give the agent Linux.
+   */
+  why?: string;
 }
 
 export const shell = defineTool<
@@ -50,6 +55,8 @@ export const shell = defineTool<
         ctx.emit({ type: 'tool_delta', callId: ctx.callId, tool: 'shell', stream: 'stderr', text }),
     });
 
+    const why = result.exitCode === 0 ? null : explainShellFailure(computer.info, result.stderr);
+
     return {
       command: input.command,
       exitCode: result.exitCode,
@@ -58,6 +65,7 @@ export const shell = defineTool<
       durationMs: result.durationMs,
       timedOut: result.timedOut,
       truncated: result.truncated,
+      ...(why ? { why } : {}),
     };
   },
   render(out) {
@@ -65,6 +73,7 @@ export const shell = defineTool<
     if (out.stdout.trim()) bits.push(`stdout:\n${out.stdout.trimEnd()}`);
     if (out.stderr.trim()) bits.push(`stderr:\n${out.stderr.trimEnd()}`);
     if (!out.stdout.trim() && !out.stderr.trim()) bits.push('(no output)');
+    if (out.why) bits.push(out.why);
     return bits.join('\n');
   },
 });
