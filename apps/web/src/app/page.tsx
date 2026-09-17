@@ -257,19 +257,23 @@ export default function Home() {
           </div>
         </Reveal>
 
+        {/* No Reveal on these. Two reasons, either sufficient: UI-PRINCIPLES §3
+            permits the reveal on section heads and nothing else, and a stagger
+            across list items is the specific thing it names; and Reveal renders
+            a div, which between <ol> and <li> is invalid nesting that costs the
+            list its semantics — a screen reader stops announcing three items.
+            The heading above this list already marks the arrival. */}
         <ol className="steps">
           {ONBOARDING.map((step, i) => (
-            <Reveal key={step.ask} delayMs={i * 90}>
-              <li className="step">
-                <span className="step-n" aria-hidden="true">
-                  {i + 1}
-                </span>
-                <div>
-                  <p className="step-ask">&ldquo;{step.ask}&rdquo;</p>
-                  <p className="step-what">{step.what}</p>
-                </div>
-              </li>
-            </Reveal>
+            <li className="step" key={step.ask}>
+              <span className="step-n" aria-hidden="true">
+                {i + 1}
+              </span>
+              <div>
+                <p className="step-ask">&ldquo;{step.ask}&rdquo;</p>
+                <p className="step-what">{step.what}</p>
+              </div>
+            </li>
           ))}
         </ol>
       </section>
