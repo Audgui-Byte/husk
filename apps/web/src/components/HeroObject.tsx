@@ -25,7 +25,7 @@
  */
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { HeroPodStatic } from "@/components/HeroPodStatic";
 import type { PodColors } from "@/components/HeroPod";
@@ -43,8 +43,13 @@ const FALLBACK: PodColors = {
   glyph: "#1b1611",
 };
 
-function readColors(): PodColors {
-  if (typeof window === "undefined") return FALLBACK;
+/**
+ * `theme` is not read in the body -- getComputedStyle already reflects it. It
+ * is a parameter so the memo below has a dependency it genuinely uses, rather
+ * than a correct dependency array with a lint suppression stapled to it.
+ */
+function readColors(theme: string): PodColors {
+  if (typeof window === "undefined" || theme === undefined) return FALLBACK;
   const cs = getComputedStyle(document.documentElement);
   const read = (name: string, fallback: string) => {
     const v = cs.getPropertyValue(name).trim();
@@ -59,6 +64,35 @@ function readColors(): PodColors {
   };
 }
 
+/* -----------------------------------------------------------------------------
+   Two external things this component reads: whether the reader asked for less
+   motion, and which theme is on. Both are subscriptions to the document rather
+   than component state, so both go through useSyncExternalStore -- setting
+   state from an effect to mirror an external value is a cascading render, and
+   the server snapshot is what keeps hydration honest.
+-------------------------------------------------------------------------------- */
+
+const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
+
+function subscribeReduced(onChange: () => void) {
+  const mq = window.matchMedia(REDUCED_QUERY);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+const reducedSnapshot = () => window.matchMedia(REDUCED_QUERY).matches;
+/* The server cannot know, and guessing "reduce" would ship the static SVG to
+   everyone. It is false here and corrected on the client before the observer
+   is built, which is before any chunk is requested. */
+const reducedServerSnapshot = () => false;
+
+function subscribeTheme(onChange: () => void) {
+  const obs = new MutationObserver(onChange);
+  obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  return () => obs.disconnect();
+}
+const themeSnapshot = () => document.documentElement.getAttribute("data-theme") ?? "auto";
+const themeServerSnapshot = () => "auto";
+
 /** The description a screen reader gets instead of the object. */
 const LABEL =
   "The Husk mark, opened: a heavy shell and a peeled flap with the lit core between them, beside a terminal caret.";
@@ -67,29 +101,16 @@ export function HeroObject() {
   const box = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
-  const [reduced, setReduced] = useState(false);
-  const [colors, setColors] = useState<PodColors>(FALLBACK);
   const [opened, setOpened] = useState(false);
   const pointer = useRef({ x: 0, y: 0 });
 
-  /* The query is read before the observer is built, so a reader who asked for
-     less motion never has the chunk requested on their behalf. It is watched,
-     not sampled once: the setting can change mid-session. */
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setReduced(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-
-  useEffect(() => {
-    setColors(readColors());
-    const el = document.documentElement;
-    const obs = new MutationObserver(() => setColors(readColors()));
-    obs.observe(el, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
+  const reduced = useSyncExternalStore(
+    subscribeReduced,
+    reducedSnapshot,
+    reducedServerSnapshot,
+  );
+  const theme = useSyncExternalStore(subscribeTheme, themeSnapshot, themeServerSnapshot);
+  const colors = useMemo<PodColors>(() => readColors(theme), [theme]);
 
   useEffect(() => {
     if (reduced) return;
@@ -145,12 +166,7 @@ export function HeroObject() {
       {reduced || !mounted ? (
         <HeroPodStatic />
       ) : (
-        <HeroPod
-          colors={colors}
-          running={visible}
-          pointer={pointer.current}
-          onOpened={onOpened}
-        />
+        <HeroPod colors={colors} running={visible} pointer={pointer} onOpened={onOpened} />
       )}
     </div>
   );

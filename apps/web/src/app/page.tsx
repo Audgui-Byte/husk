@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { CodeBlock, CommandBlock } from "@/components/CodeBlock";
+import { CodeBlock } from "@/components/CodeBlock";
 import { HeroObject } from "@/components/HeroObject";
+import { InstallSelector } from "@/components/InstallSelector";
 import { ScrollCue } from "@/components/ScrollCue";
 import { ScrollNarrative } from "@/components/ScrollNarrative";
 import { Reveal } from "@/components/Reveal";
@@ -16,7 +17,6 @@ import {
   DISTILL,
   DOCTOR,
   HUSK_YAML,
-  MCP_COMMAND,
   MCP_TOOLS,
   PROVIDERS,
   REPO_URL,
@@ -53,13 +53,18 @@ export default function Home() {
               already had into a bot that does the job again tomorrow.
             </p>
 
-            {/* 42rem, not 40. JetBrains Mono is wider than the fallback stack
+            {/* 42rem, not 40. The mono face is wider than the fallback stack
                 the 40rem cap was measured against, so the real face pushed the
-                install command 4px past its box the moment the fonts landed —
-                a scrollbar on the one string that matters, caused by fixing
-                something else. */}
+                install command past its box the moment the fonts landed — a
+                scrollbar on the one string that matters, caused by fixing
+                something else.
+
+                The selector replaces the bare command block. Both this and the
+                one in #mcp are the same component: the page used to hardcode
+                Claude Code in two places while the copy underneath promised
+                Cursor and Zed the same thing without saying what to type. */}
             <div style={{ marginTop: "var(--space-8)", maxWidth: "42rem" }}>
-              <CommandBlock command={MCP_COMMAND} size="lg" />
+              <InstallSelector size="lg" idPrefix="hero-install" />
             </div>
 
             <div className="hero-actions" style={{ marginTop: "var(--space-4)" }}>
@@ -203,21 +208,22 @@ export default function Home() {
           <div className="col-7">
             <p className="eyebrow">the whole install</p>
             <h2 id="mcp-title" className="h-section">
-              One line gives Claude Code a machine.
+              One line gives your client a machine.
             </h2>
 
             <div style={{ marginTop: "var(--space-8)" }}>
-              <CommandBlock command={MCP_COMMAND} size="lg" />
+              <InstallSelector size="lg" idPrefix="mcp-install" />
             </div>
 
             <div className="prose" style={{ marginTop: "var(--space-6)" }}>
               <p>
-                There is no second step and no config file to edit. Claude Code
-                gets twenty tools against a real Linux machine — a shell, the
-                filesystem, ports, and a browser — and that filesystem persists
-                for the rest of the conversation. The same server
-                speaks streamable HTTP, so Cursor, Zed and anything else that
-                talks MCP get the same thing.
+                In Claude Code and Codex there is no second step and no config
+                file to edit. Cursor, Zed and Antigravity have no add command
+                of their own, so those get the block to paste and the path to
+                paste it into — the tab above switches between them. Either
+                way the client gets twenty tools against a real Linux machine —
+                a shell, the filesystem, ports, and a browser — and that
+                filesystem persists for the rest of the conversation.
               </p>
               <p>
                 The first tool result tells the model how isolated it is,

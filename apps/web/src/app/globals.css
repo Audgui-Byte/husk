@@ -1134,6 +1134,101 @@ table.data tbody tr:hover {
 }
 
 /* -----------------------------------------------------------------------------
+   The install selector.
+
+   A segmented control, from section 4 of UI-PRINCIPLES: the pills get the same
+   rest/hover/active/focus/selected treatment every other control here gets,
+   and the selected one changes background rather than only colour. Restrained
+   on purpose -- it is a functional control, not a showpiece, and it has no
+   entrance of its own.
+
+   The pills wrap rather than scroll. Six client names at 13.33px fit two rows
+   on a 360px screen, and a horizontally scrolling tab strip hides the option
+   the reader came for.
+-------------------------------------------------------------------------------- */
+
+.installer {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.installer-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.installer-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height-md);
+  padding: 0 var(--space-4);
+  border: var(--border-width-hairline) solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+
+.installer-pill:hover {
+  background: var(--color-raised);
+  color: var(--color-text);
+  border-color: var(--color-text-subtle);
+}
+
+.installer-pill:active {
+  transform: translateY(1px);
+}
+
+.installer-pill[aria-selected="true"] {
+  background: var(--color-raised);
+  border-color: var(--color-border-focus);
+  color: var(--color-text);
+}
+
+.installer-panel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* The panel is focusable so the keyboard reaches its scrollable code block;
+   it must not draw a ring when the pointer put focus there. */
+.installer-panel:focus {
+  outline: none;
+}
+
+.installer-panel:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-md);
+}
+
+.installer-where {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.installer-path {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.installer-note {
+  margin: 0;
+  max-width: var(--measure-prose);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-subtle);
+}
+
+/* -----------------------------------------------------------------------------
    The scroll narrative.
 
    A pinned stage scrubbed by a GSAP timeline. Three rules govern the whole

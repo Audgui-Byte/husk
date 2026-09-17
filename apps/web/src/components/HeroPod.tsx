@@ -56,8 +56,10 @@ export interface HeroPodProps {
   colors: PodColors;
   /** True while the loop may run. The parent gates this on visibility. */
   running: boolean;
-  /** Pointer position within the hero box, -1..1 on each axis. */
-  pointer: { x: number; y: number };
+  /** Pointer position within the hero box, -1..1 on each axis. The ref itself,
+      not its value: the parent mutates it on pointermove, and reading .current
+      during the parent's render would be reading a ref during render. */
+  pointer: React.RefObject<{ x: number; y: number }>;
   /** Called once, when the opening sequence has finished. */
   onOpened: () => void;
   /** Skip the sequence and start open, for a reader who arrives scrolled. */
@@ -157,7 +159,7 @@ function Scene({ colors, pointer, onOpened, startOpen }: Omit<HeroPodProps, "run
     }),
     [],
   );
-  const dust = useMemo(buildDust, []);
+  const dust = useMemo(() => buildDust(), []);
 
   useEffect(() => {
     const g = geo;
@@ -250,8 +252,8 @@ function Scene({ colors, pointer, onOpened, startOpen }: Omit<HeroPodProps, "run
 
     // Bounded pointer tracking. Six degrees each way: enough to feel awake,
     // nowhere near the free spin section 8.2 of UI-PRINCIPLES is about.
-    const wantYaw = pointer.x * 0.11;
-    const wantPitch = -pointer.y * 0.07;
+    const wantYaw = pointer.current.x * 0.11;
+    const wantPitch = -pointer.current.y * 0.07;
     const k = 1 - Math.pow(0.0025, dt);
     a.yaw += (wantYaw - a.yaw) * k;
     a.pitch += (wantPitch - a.pitch) * k;
