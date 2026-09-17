@@ -1130,28 +1130,69 @@ table.data tbody tr:hover {
 
 /* The SVG fallback. Same object, same box, drawn from the same tables --
    colours come from the same tokens the WebGL scene reads. */
-.hero-pod-svg {
+.hero-scene-svg {
   display: block;
   width: 100%;
   height: 100%;
 }
 
-.pod-shell {
-  fill: var(--color-primary-300);
-}
-
-.pod-shell-back {
-  fill: var(--color-primary-500);
-}
-
-/* The cavity wall. Darker than the outside, because it is in the object's own
-   shadow -- which is the whole reason the husk has a wall in the geometry. */
-.pod-wall {
+/* The shadow side of both slabs, offset where the key light puts it. */
+.hs-depth {
   fill: var(--color-primary-700);
 }
 
-.pod-kernel {
+.hs-panel {
+  fill: var(--color-surface);
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+}
+
+.hs-machine {
+  fill: var(--color-primary-300);
+}
+
+.hs-bar {
+  fill: var(--color-text-muted);
+  opacity: 0.45;
+}
+
+/* The reader's own message, in the accent -- the same distinction the chat
+   widget at the corner of the page makes. */
+.hs-bar-mine {
   fill: var(--color-accent-300);
+  opacity: 0.85;
+}
+
+.hs-composer {
+  fill: var(--color-text-muted);
+  opacity: 0.22;
+}
+
+.hs-header {
+  fill: var(--color-text-muted);
+  opacity: 0.3;
+}
+
+.hs-plate {
+  fill: var(--color-primary-700);
+  opacity: 0.42;
+}
+
+.hs-cable {
+  fill: none;
+  stroke: var(--color-accent-300);
+  stroke-width: 6;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.hs-port {
+  fill: var(--color-accent-300);
+}
+
+.hs-vent {
+  fill: var(--color-primary-700);
+  opacity: 0.55;
 }
 
 /* -----------------------------------------------------------------------------
@@ -1490,19 +1531,19 @@ table.data tbody tr:hover {
 
 .narrative[data-anim="on"] .nr-dock {
   position: fixed;
-  left: var(--gutter-inline);
+  right: var(--gutter-inline);
   bottom: var(--gutter-inline);
   /* Under the sticky header, over the page. */
   z-index: 30;
   display: flex;
   flex-direction: column-reverse;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: var(--space-3);
 }
 
 @media (min-width: 48rem) {
   .narrative[data-anim="on"] .nr-dock {
-    left: var(--gutter-inline-wide);
+    right: var(--gutter-inline-wide);
     bottom: var(--gutter-inline-wide);
   }
 }
@@ -1556,7 +1597,7 @@ table.data tbody tr:hover {
 
 .narrative[data-anim="on"] .nr-panel {
   box-shadow: var(--shadow-lg);
-  transform-origin: 0 100%;
+  transform-origin: 100% 100%;
   opacity: 0;
   transform: translateY(8px) scale(0.98);
   pointer-events: none;

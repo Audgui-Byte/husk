@@ -514,13 +514,21 @@ produces genuinely photogenic text output; use it.
 the whole of the case, and it is still the test every 3D object on either site
 has to pass. Two do:
 
-- **The hero object** is the mark — `logo/mark.svg`'s three paths, extruded,
-  opening. `USAGE.md` calls it "a split husk with a lit core" and `Logo.tsx`
-  says of its two shell paths that "the asymmetry is load-bearing"; the scene
-  reads those same three path strings out of one table. It arrives *at* the
-  logo: at the end of the sequence every offset is zero and it is the mark,
-  square on. It does not rotate on its own and there is nothing iridescent
-  about it.
+- **The hero object** is the headline beside it. "Your AI chat gets a real
+  computer of its own" is two things and a connection, so the object is a chat
+  panel with an exchange in it, a machine below and behind, and a cable
+  carrying one pulse into the machine's port, which lights when it arrives. A
+  reader who looks at it and then reads the headline should find the headline
+  already familiar. It does not rotate on its own and there is nothing
+  iridescent about it.
+
+  Three earlier versions of that object failed this test and are worth naming,
+  because each failed differently: a lathed husk (a flat blob head-on — a
+  surface with no wall has no inside to show), the mark extruded (solid and
+  legible, but the mark is already in the header, the footer and the chat
+  launcher, and a fourth copy depicts the brand rather than the product), and a
+  ribbed seed pod (a good object, and still a seed rather than a computer).
+  "It depicts nothing" is the test; "it depicts *us*" does not pass it either.
 - **The isolation viewer** depicts `Availability.isolated` for the provider the
   reader picked — plates closed on a kernel boundary, standing off it when
   there is not one. That reading is in the readout underneath in words, in the

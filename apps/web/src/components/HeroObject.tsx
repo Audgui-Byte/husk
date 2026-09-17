@@ -3,7 +3,7 @@
 /**
  * The gate in front of the hero's WebGL scene.
  *
- * Four things happen here and none of them in `HeroPod` itself, so that the
+ * Four things happen here and none of them in `HeroScene` itself, so that the
  * scene file is only ever about the scene:
  *
  *   1. `prefers-reduced-motion` is read before anything is imported. An
@@ -27,19 +27,21 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
-import { HeroPodStatic } from "@/components/HeroPodStatic";
-import type { PodColors } from "@/components/HeroPod";
+import { HeroSceneStatic } from "@/components/HeroSceneStatic";
+import type { SceneColors } from "@/components/HeroScene";
 
-const HeroPod = dynamic(() => import("@/components/HeroPod"), {
+const HeroScene = dynamic(() => import("@/components/HeroScene"), {
   ssr: false,
-  loading: () => <HeroPodStatic />,
+  loading: () => <HeroSceneStatic />,
 });
 
-const FALLBACK: PodColors = {
+const FALLBACK: SceneColors = {
   shell: "#deb076",
   shellDeep: "#a97c46",
-  coreLit: "#42d0cf",
-  coreRim: "#8be9e7",
+  lit: "#42d0cf",
+  rim: "#8be9e7",
+  panel: "#1b1611",
+  bar: "#bdb8b1",
 };
 
 /**
@@ -47,7 +49,7 @@ const FALLBACK: PodColors = {
  * is a parameter so the memo below has a dependency it genuinely uses, rather
  * than a correct dependency array with a lint suppression stapled to it.
  */
-function readColors(theme: string): PodColors {
+function readColors(theme: string): SceneColors {
   if (typeof window === "undefined" || theme === undefined) return FALLBACK;
   const cs = getComputedStyle(document.documentElement);
   const read = (name: string, fallback: string) => {
@@ -56,9 +58,11 @@ function readColors(theme: string): PodColors {
   };
   return {
     shell: read("--color-primary-300", FALLBACK.shell),
-    shellDeep: read("--color-primary-500", FALLBACK.shellDeep),
-    coreLit: read("--color-accent-300", FALLBACK.coreLit),
-    coreRim: read("--color-accent-200", FALLBACK.coreRim),
+    shellDeep: read("--color-primary-700", FALLBACK.shellDeep),
+    lit: read("--color-accent-300", FALLBACK.lit),
+    rim: read("--color-accent-200", FALLBACK.rim),
+    panel: read("--color-surface", FALLBACK.panel),
+    bar: read("--color-text-muted", FALLBACK.bar),
   };
 }
 
@@ -93,7 +97,7 @@ const themeServerSnapshot = () => "auto";
 
 /** The description a screen reader gets instead of the object. */
 const LABEL =
-  "A husk, opened: two ribbed shell halves drawn apart around a lit kernel.";
+  "An AI chat panel with a short exchange in it, wired by a cable to a small computer below, whose port is lit.";
 
 export function HeroObject() {
   const box = useRef<HTMLDivElement>(null);
@@ -108,7 +112,7 @@ export function HeroObject() {
     reducedServerSnapshot,
   );
   const theme = useSyncExternalStore(subscribeTheme, themeSnapshot, themeServerSnapshot);
-  const colors = useMemo<PodColors>(() => readColors(theme), [theme]);
+  const colors = useMemo<SceneColors>(() => readColors(theme), [theme]);
 
   useEffect(() => {
     if (reduced) return;
@@ -133,7 +137,7 @@ export function HeroObject() {
     return () => window.clearTimeout(id);
   }, [visible, mounted]);
 
-  /* Mutated in place, never reassigned. `HeroPod` is handed this object once
+  /* Mutated in place, never reassigned. `HeroScene` is handed this object once
      and reads it inside useFrame; a fresh object on every pointermove would
      leave the scene holding the first one forever. */
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -162,9 +166,9 @@ export function HeroObject() {
       <p className="visually-hidden">{LABEL}</p>
 
       {reduced || !mounted ? (
-        <HeroPodStatic />
+        <HeroSceneStatic />
       ) : (
-        <HeroPod colors={colors} pointer={pointer} onOpened={onOpened} />
+        <HeroScene colors={colors} pointer={pointer} onOpened={onOpened} />
       )}
     </div>
   );

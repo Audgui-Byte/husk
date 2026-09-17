@@ -3,7 +3,7 @@
 /**
  * The chat that gets a computer, as a docked widget.
  *
- * It sits bottom-left behind a launcher, the way a support chat does, and
+ * It sits bottom-right behind a launcher, the way a support chat does, and
  * fills itself as the reader scrolls past the top of the page: the install
  * command types into the composer, it sends, the tools attach, real output
  * lands, and the launcher's core lights. Scroll past and it folds back to the
