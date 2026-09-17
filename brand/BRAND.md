@@ -301,12 +301,28 @@ should appear within the first screen of every surface where a command is legal.
 | Element | Rule |
 | --- | --- |
 | **Colour** | Warm, dry outer layer (`primary`, "husk gold") against a cold, electric inner core (`accent`, "core teal"). Gold is the shell — chrome, rules, marks, the frame. Teal is the live thing — links, focus, running state, cursors. Never gradient them into each other. |
-| **Type** | Bricolage Grotesque for display (a grotesque with visible tool marks), Instrument Sans for UI, JetBrains Mono for anything a machine wrote. Mono is a semantic choice, not a decorative one: if the machine said it, it is monospaced. |
+| **Type** | General Sans for display and UI (geometric with real warmth, and not the default reach), Commit Mono for anything a machine wrote, Newsreader for the manifesto's body copy and nothing else. Mono is a semantic choice, not a decorative one: if the machine said it, it is monospaced. The serif is a voice choice on the same principle: the manifesto is an essay, not a product surface, and it says so before the argument has to. |
 | **Mark** | A split husk with a lit core. Works in one colour at 16 px. See `logo/USAGE.md`. |
-| **Motion** | Motion is reserved for state changes the user caused. Nothing on this brand ambient-animates. See `UI-PRINCIPLES.md`. |
-| **Imagery** | Terminal output, real file trees, real `husk.yaml` files, real `husk doctor` reports. No abstract renders, no glowing orbs, no robots, no brains, no hands touching holograms. If we cannot screenshot it, we do not show it. |
+| **Motion** | Motion is reserved for state changes the user caused, and for one scroll-scrubbed sequence per page where the reader's scroll *is* the clock. Nothing on this brand ambient-animates except a spinner, a terminal caret and one dashed ring, all three named in `UI-PRINCIPLES.md` §3. Nothing idles, nothing autoplays, nothing types itself on a timer. |
+| **Imagery** | Terminal output, real file trees, real `husk.yaml` files, real `husk doctor` reports. No abstract renders, no glowing orbs, no robots, no brains, no hands touching holograms. If we cannot screenshot it, we do not show it. The mark itself is the exception and the only one: it may be given depth and light, because it is the mark rather than an illustration of a mood — see `UI-PRINCIPLES.md` §8.2 for the test an object has to pass, which is "it depicts something you can check". |
 
 ---
 
-*Owner: brand. Version 1.0. Every colour value in this kit has a measured contrast ratio
+*Owner: brand. Version 1.1. Every colour value in this kit has a measured contrast ratio
 in `tokens.css`; every claim above has a command that proves it.*
+
+*1.1 changed three rows — Type, Motion, Imagery — alongside the motion and
+visual work on `apps/web`. The colour system, the mark and every pillar above
+are untouched. `UI-PRINCIPLES.md` §3 and §8 carry the reasoning; the short
+version is that the bans were kept and narrowed to the arguments that produced
+them, rather than lifted.*
+
+*Where the faces actually live, because the token file does not say General
+Sans: `tokens.css` still declares the previous stack on `--font-display`,
+`--font-ui` and `--font-mono`, and `drift-check` requires the three vendored
+copies to stay byte-identical to it. `apps/web` and `apps/docs` re-point those
+three tokens in their own `globals.css`, immediately after the `@import`, where
+the change is commented. `apps/console` ships no font files and never did, so
+it resolves to the fallback stacks either way and this change does not reach
+it. If the console ever gets the real faces, that is the moment to move the
+declarations into `tokens.css` and sync all three copies.*
