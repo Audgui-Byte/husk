@@ -89,6 +89,8 @@ brochure.
 | Modal | `--duration-5` 320ms | `--ease-enter` | Context shift |
 | Dismissal | `--duration-2` 120ms | `--ease-cut` | Gone |
 | Determinate progress | — | `--ease-linear` | Real measured progress only |
+| Page entrance, once per load | `--duration-6` 560ms, `--duration-8` 760ms for the headline | `--ease-enter` | This page has finished arriving |
+| Section head entering the viewport | `--duration-6` 620ms | `--ease-enter` | You have reached a new part |
 | Streamed model output | `--duration-7` 700ms | `--ease-linear` | Tokens arriving, one per frame, matching real arrival |
 
 Exits are always faster than entrances. `ease-in-out` is not in the token set
@@ -96,29 +98,56 @@ and must not be reintroduced: it is symmetric, and interface motion is not.
 
 ### Where motion is banned
 
-1. **Scroll-triggered reveals.** No fade-up-on-scroll, no stagger, no
-   intersection-observer choreography. The content was already there; animating
-   it in tells the reader the page is a slideshow and costs them time on every
-   scroll. If a section needs an entrance to feel important, it is not important.
-2. **Parallax.** Of any depth, on anything.
-3. **Anything that loops.** No pulsing dots, no breathing glows, no shimmering
+1. **Scroll-triggered reveals, except on section heads, under every condition
+   below.** This was an outright ban and is now a narrow permission. The
+   original reasoning has not been refuted and is worth keeping in view: the
+   content was already there, animating it in tells the reader the page is a
+   slideshow, and *if a section needs an entrance to feel important, it is not
+   important.* That last sentence is still the test to apply before adding one.
+
+   What changed is not the argument, it is the scope. A 560ms rise on the
+   heading of a section the reader has just arrived at marks a boundary they
+   caused by scrolling, which is what the top of this section asks motion to
+   do. Applying the same treatment to body copy, a table, a terminal or a code
+   block is still banned: those are content, and a reader who has to wait for
+   a paragraph is being charged for decoration.
+
+   Permitted only when all five hold:
+
+   - **It fires once.** Unobserve on first intersection. A reveal that replays
+     on scroll-back is a loop with extra steps, and loops are item 4.
+   - **The content ships visible.** The class that hides it is added by script
+     after mount, so a crawler, a reader with JS off, and a failed hydration
+     all get the page rather than a stack of `opacity: 0`. This is the
+     difference between an entrance and a content-blocking animation, and it
+     is not negotiable.
+   - **`prefers-reduced-motion` removes it**, not shortens it. See below.
+   - **It completes before it is read.** Fire on a root margin that starts the
+     motion before the element reaches the fold.
+   - **Heads only.** Never on the prose, the tables, the terminals or the code.
+
+2. **Entrance animations on anything below the first screen, other than the
+   above.** A hero may introduce itself once per load. The rest of the page has
+   already been introduced by the hero.
+3. **Parallax.** Of any depth, on anything.
+4. **Anything that loops.** No pulsing dots, no breathing glows, no shimmering
    gradients, no drifting background shapes, no animated mesh. A looping
    animation is a permanent low-grade demand on attention with no information in
    it. The single exception is an indeterminate spinner, which must appear only
    after 400ms of actual waiting and must disappear the instant it can be
    replaced by a real number.
-4. **Number count-ups.** A number that spins from 0 to its value is unreadable
+5. **Number count-ups.** A number that spins from 0 to its value is unreadable
    for the duration of the animation and is usually decorating a metric nobody
    asked for.
-5. **Typewriter effects on marketing copy.** Streaming model output can animate
+6. **Typewriter effects on marketing copy.** Streaming model output can animate
    because it is genuinely arriving over time. A headline that types itself is
    lying about latency.
-6. **Auto-advancing carousels, tickers, and marquees.** Movement the user did
+7. **Auto-advancing carousels, tickers, and marquees.** Movement the user did
    not cause and cannot stop.
-7. **Hover animations that move layout.** Scale, translate and shadow on hover
+8. **Hover animations that move layout.** Scale, translate and shadow on hover
    are fine; anything that changes an element's box and reflows a neighbour is
    not.
-8. **Page transitions.** Navigation should feel like it already happened.
+9. **Page transitions.** Navigation should feel like it already happened.
 
 ### `prefers-reduced-motion`
 
@@ -131,6 +160,12 @@ get right by hand:
 - **Anything animating that is not a CSS transition must be handled in JS.**
   Streamed output renders in complete chunks rather than character-by-character.
   Spinners become a static label: `Working…`.
+- **An entrance is removed, not collapsed.** The two permitted above are
+  decoration, not state, and the rule at the top of this list does not apply to
+  them: there is no state change to preserve. Check the query in JS before the
+  observer is constructed, so the element is never hidden in the first place —
+  a 1ms fade from `opacity: 0` still has a frame at zero, and that frame is a
+  flash. `animation: none` and `display: none`, not `1ms`.
 
 ---
 

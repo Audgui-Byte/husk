@@ -215,17 +215,20 @@ svg {
   grid-column: span 8;
 }
 
-/* Below 1152px every 12-column block collapses to one column. Asymmetry is a
+/* Below 1280px every 12-column block collapses to one column. Asymmetry is a
    wide-viewport affordance; on a phone it is an awkward wrap.
 
-   The threshold is 72rem, not the 64rem it used to be, because at 64rem the
+   The threshold is 80rem. It was 64rem, then 72rem, and both were measured
+   against the fallback mono stack -- JetBrains Mono is wider, so vendoring the
+   real face pushed the same content past the same columns a third time. At
+   64rem the
    split was the thing that broke the content it was splitting: `.col-7` at a
    1024px viewport is 540px, and the widest `husk doctor` line needs 574px at
    13.33px mono. The hero command block did the same, and worse -- 464px of
    `claude mcp add husk ...` in 404px of column, because `.cmd-lg` reached for
    19.2px type at the exact breakpoint the column got narrower. Two columns
    are worth having only where both of them fit. */
-@media (max-width: 71.99rem) {
+@media (max-width: 79.99rem) {
   .grid12 {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -238,7 +241,7 @@ svg {
 /* Source order puts the terminal first in the chat-to-bot block so it sits on
    the left at desktop width; stacked, the heading must come first. Bound to
    the same width as the collapse above -- they describe one layout change. */
-@media (max-width: 71.99rem) {
+@media (max-width: 79.99rem) {
   .order-first-sm {
     order: -1;
   }
@@ -1313,3 +1316,203 @@ table.data tbody tr:hover {
     border: 1px solid CanvasText;
   }
 }
+
+/* =============================================================================
+   MOTION
+
+   What survived the comparison: a hero entrance once per load, and a reveal on
+   section heads. Both are now permitted by UI-PRINCIPLES.md §3, which was
+   amended alongside this rather than left to contradict it.
+
+   What did not: the looping gradient behind the fold, which read as a smear
+   under the type rather than light on a surface, and was §8.1 and §8.8 besides.
+   §8 needed no amendment once it was gone.
+
+   Three rules held regardless of which way that goes:
+
+   1. Content is visible at first paint. Every entrance below is applied by a
+      class that JavaScript adds, so no-JS and crawlers get the page, not a
+      stack of opacity: 0. That is the difference between an entrance and a
+      content-blocking animation.
+   2. prefers-reduced-motion removes all of it, not just the durations. A
+      collapsed transition is still a state change; a decorative loop should be
+      absent, and the query below sets animation: none rather than 1ms.
+   3. Nothing loops in view of text being read. The backdrop sits behind the
+      hero only, at an opacity where it reads as a lit surface rather than
+      motion in the periphery.
+-------------------------------------------------------------------------------- */
+
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The headline uncovers rather than fades: a wipe reads as type being set,
+   which is the one entrance that suits a display face. */
+@keyframes hero-uncover {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 105% 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 -20% 0);
+  }
+}
+
+.hero-anim .h-hero {
+  animation: hero-uncover 760ms var(--ease-enter) both;
+}
+
+.hero-anim .lead {
+  animation: hero-rise 560ms var(--ease-enter) 140ms both;
+}
+
+.hero-anim .cmd {
+  animation: hero-rise 560ms var(--ease-enter) 240ms both;
+}
+
+.hero-anim .hero-actions {
+  animation: hero-rise 560ms var(--ease-enter) 320ms both;
+}
+
+.hero-anim .meta {
+  animation: hero-rise 560ms var(--ease-enter) 400ms both;
+}
+
+/* -- the backdrop ------------------------------------------------------------
+
+   Removed. The teal wash behind the hero read as a smear under the type rather
+   than as light on a surface, and no amount of opacity fixed the fact that it
+   was decoration competing with a headline. What fills that space now is the
+   chat panel, which is content.
+-------------------------------------------------------------------------------- */
+
+/* -- scroll reveals ---------------------------------------------------------- */
+
+/* Only elements the script has armed are hidden. Unarmed markup renders
+   normally, which is what a crawler and a no-JS reader get. */
+.reveal-armed {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+}
+
+.reveal-armed.reveal-in {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 620ms var(--ease-enter) var(--reveal-delay, 0ms),
+    transform 620ms var(--ease-enter) var(--reveal-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-anim .h-hero,
+  .hero-anim .lead,
+  .hero-anim .cmd,
+  .hero-anim .hero-actions,
+  .hero-anim .meta {
+    animation: none;
+  }
+
+  .reveal-armed,
+  .reveal-armed.reveal-in {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* -- hero object and onboarding steps ---------------------------------------- */
+
+/* The hero is two columns again once there is room for both. Below 72rem the
+   grid collapses (see the grid12 rule above) and the object sits under the
+   copy, where it is still worth having and no longer competing for width with
+   a 19.2px mono command. */
+/* 8/4, not the 7/5 the base rule gives. The copy column carries a 19.2px mono
+   install command; the object is a square that looks right at any size. Giving
+   the object the extra column is how the command ended up truncated at 1152 in
+   the first place. */
+
+
+
+
+/* aspect-ratio, not min-height. HuskCore's canvas is height: 100%, and 100% of
+   a parent whose height is only a minimum resolves against a height the canvas
+   itself is supposed to determine -- so it collapsed and drew the object at a
+   fraction of the space. A definite box is what `.core-stage` gives it in the
+   Providers section, and the same thing is what it needs here. */
+.hero-object {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 26rem;
+  margin-inline: auto;
+}
+
+@media (max-width: 79.99rem) {
+  .hero-object {
+    max-height: 18rem;
+  }
+}
+
+.steps {
+  list-style: none;
+  margin: var(--space-10) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-6);
+  max-width: var(--measure-prose);
+}
+
+.step {
+  display: grid;
+  grid-template-columns: var(--space-8) 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.step-n {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  line-height: var(--leading-code);
+  color: var(--color-text-accent);
+  border: var(--border-width-hairline) solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  padding-block: var(--space-1);
+}
+
+.step-ask {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.step-what {
+  color: var(--color-text-muted);
+  margin: var(--space-2) 0 0;
+}
+
+/* -- loading ----------------------------------------------------------------
+
+   There is no `loading.tsx`, deliberately.
+
+   Adding one wraps the route in a Suspense boundary, and this page holds two
+   `next/dynamic` components with `ssr: false` (the WebGL core, in the hero and
+   in Providers). With the boundary present the segment fell back and never
+   came out of it: the real `<main>` sat in a `display: none` div while the
+   loading state rendered, on a clean dev server and a cleared .next both.
+
+   It was not worth diagnosing further, because the feature it buys is close to
+   nothing here. Every route on this site is statically prerendered, so a
+   route-level loading state can only appear during a slow navigation -- and it
+   cost a page that renders at all. `error.tsx` and `global-error.tsx` have no
+   such interaction and stay.
+-------------------------------------------------------------------------------- */

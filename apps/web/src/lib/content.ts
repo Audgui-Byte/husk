@@ -277,3 +277,27 @@ export const BROWSER_TOOLS: Array<{ name: string; what: string }> = [
 
 /** Thirteen ship; the list above is the first five. */
 export const BROWSER_TOOL_COUNT = 13;
+
+/**
+ * The first three prompts, in the order that proves the most fastest.
+ *
+ * The install is one line and then the page stops talking, which is the gap
+ * this fills: a reader who has just run `claude mcp add husk` has a computer
+ * and no idea what changed. Each of these is answerable only by a machine that
+ * really exists -- a kernel string the model cannot invent, a file that is
+ * still there on the next turn, a port you can open in your own browser.
+ */
+export const ONBOARDING: Array<{ ask: string; what: string }> = [
+  {
+    ask: "What kernel are you on?",
+    what: "It runs uname -sr in the machine and reads it back. The answer is Linux on a computer that did not exist a second ago, and it is not one the model could have guessed.",
+  },
+  {
+    ask: "Write a note to /work/note.txt, then read it back next turn.",
+    what: "The filesystem persists for the rest of the conversation. A stable key maps the chat to the same machine, so nothing is tracked by you.",
+  },
+  {
+    ask: "Start a web server and give me the URL.",
+    what: "expose_port publishes the port it started listening on and hands back a URL you can open. That is the moment the computer stops being an abstraction.",
+  },
+];
