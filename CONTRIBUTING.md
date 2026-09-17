@@ -34,9 +34,10 @@ obeys. It is short, and it is not optional. The parts that trip people up:
 - **ESM only, and relative imports carry `.js`.** NodeNext resolution.
 - **No native modules.** Ever. A Windows `npm install` must be clean without a C++
   toolchain, which is worth more than SQLite would be.
-- **Dependencies run downhill.** `core` ← `runtime`/`models`/`sessions` ← `agent` ←
-  `mcp`/`server`/`adapters` ← `cli`. Never sideways, never up, never into another
-  package's `src/`.
+- **Dependencies run downhill.** Never sideways, never up, never into another package's
+  `src/`. The layers are listed in
+  [the build contract](docs/BUILD-CONTRACT.md#dependency-direction) — one copy, because
+  a chain written from memory has been wrong in three files at once.
 - **Two tsconfigs per package.** `tsconfig.json` for typecheck, `tsconfig.build.json`
   for build. Compiled tests must not ship.
 

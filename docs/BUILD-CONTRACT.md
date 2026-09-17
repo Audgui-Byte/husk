@@ -41,6 +41,7 @@ packages/
   models/     @husk-ai/models     model router: anthropic, openai, google, groq,
                                openrouter, ollama, lmstudio, deepseek, mistral, cerebras
   sessions/   @husk-ai/sessions   transcript importers + the distiller (chat -> husk.yaml)
+  browser/    @husk-ai/browser    a real Chromium inside a computer, driven over CDP
   agent/      @husk-ai/agent      the tool-calling loop + the built-in tools
   mcp/        @husk-ai/mcp        MCP server (stdio)
   server/     @husk-ai/server     control plane REST/WS + bot host
@@ -54,9 +55,26 @@ sandbox/                       Dockerfiles for the husk images
 brand/                         brand kit
 ```
 
-**Dependency direction is strictly downhill.** `core` <- `runtime`/`models`/`sessions`
-<- `agent` <- `mcp`/`server`/`adapters` <- `cli`. Never import sideways or upward.
-Never import from another package's `src/` — always the package name.
+### Dependency direction
+
+**Strictly downhill.** Never import sideways or upward, and never from another package's
+`src/` — always the package name.
+
+| Layer | Packages | May depend on |
+| --- | --- | --- |
+| 0 | `core` | nothing in the workspace |
+| 1 | `runtime`, `models`, `sessions`, `browser`, `sdk`, `adapters` | layer 0 |
+| 2 | `agent` | layers 0–1 |
+| 3 | `mcp`, `server` | layers 0–2 |
+| 4 | `cli` | layers 0–3 |
+
+The layer is a ceiling, not a requirement: `adapters` and `sdk` sit at layer 1 because
+`core` is all they need, and `server` depends on `adapters` and `runtime` but not on
+`agent`. Nothing depends on `cli`.
+
+This table is the only copy of the ordering. It was previously written as a linear chain
+in three files, and all three had drifted — `browser` was missing from every one of
+them, and `adapters` and `sdk` were shown above `agent` when neither imports it.
 
 ## Conventions
 
