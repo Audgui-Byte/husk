@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CommandBlock } from "@/components/CodeBlock";
+import { newsreader } from "./fonts";
 
 export const metadata: Metadata = {
   title: "Why agents need honest sandboxes",
@@ -26,7 +27,10 @@ export default function Manifesto() {
         <span />
       </div>
 
-      <article className="container container-md section" style={{ borderTop: 0 }}>
+      <article
+        className={`container container-md section ${newsreader.variable}`}
+        style={{ borderTop: 0 }}
+      >
         <p className="eyebrow">manifesto</p>
         <h1 className="h-page">Why agents need honest sandboxes.</h1>
         <p className="lead" style={{ marginTop: "var(--space-6)" }}>
@@ -35,7 +39,7 @@ export default function Manifesto() {
           made that choice on your behalf.
         </p>
 
-        <div className="prose" style={{ marginTop: "var(--space-12)" }}>
+        <div className="prose manifesto-body" style={{ marginTop: "var(--space-12)" }}>
           <p>
             You are not defending against a malicious user. You are the user.
             You are defending against your own agent doing something

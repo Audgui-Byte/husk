@@ -16,6 +16,30 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   trailingSlash: false,
   poweredByHeader: false,
+
+  /**
+   * Lighthouse flagged "missing source maps for large first-party JavaScript".
+   * The bundle is first-party and Apache-2.0 -- the source is already public,
+   * so there is nothing here a map could leak, and without one a production
+   * stack trace names a minified symbol.
+   *
+   * The maps are emitted as separate `.map` files and only fetched when a
+   * reader opens devtools, so this costs deployment size and nothing on the
+   * critical path.
+   */
+  productionBrowserSourceMaps: true,
+
+  experimental: {
+    /**
+     * Against the ~146 KiB of unused JavaScript in the same report. These are
+     * barrel packages: `import { Canvas } from "@react-three/fiber"` pulls the
+     * whole index through the bundler's side-effect analysis. Rewriting each
+     * named import to its own module lets tree-shaking see what is actually
+     * reachable. `three` is the one that matters -- it is the largest
+     * dependency on the site by an order of magnitude.
+     */
+    optimizePackageImports: ["three", "@react-three/fiber"],
+  },
 };
 
 export default nextConfig;

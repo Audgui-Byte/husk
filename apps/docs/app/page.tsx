@@ -2,11 +2,22 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { Terminal } from '@/components/Terminal';
 import { nav } from '@/lib/content';
-import { SITE_DESCRIPTION } from '@/lib/site';
+import { SITE_DESCRIPTION, SITE_NAME } from '@/lib/site';
+
+const TITLE = 'Husk documentation';
 
 export const metadata: Metadata = {
-  title: 'Husk documentation',
+  title: TITLE,
   description: SITE_DESCRIPTION,
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    url: '/',
+    title: TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  twitter: { card: 'summary_large_image', title: TITLE, description: SITE_DESCRIPTION },
 };
 
 /**
