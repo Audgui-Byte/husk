@@ -1313,3 +1313,142 @@ table.data tbody tr:hover {
     border: 1px solid CanvasText;
   }
 }
+
+/* =============================================================================
+   MOTION — the 21st.dev register, for comparison
+
+   Everything in this block is banned by UI-PRINCIPLES.md §3 and §8: a hero
+   entrance, scroll-triggered reveals, and a looping gradient behind the fold.
+   It is here so the ban can be judged against the thing itself. Keep this
+   direction and §3 gets rewritten in the same change; drop it and this block
+   goes with it. It must not sit here indefinitely contradicting the document
+   the rest of the stylesheet obeys.
+
+   Three rules held regardless of which way that goes:
+
+   1. Content is visible at first paint. Every entrance below is applied by a
+      class that JavaScript adds, so no-JS and crawlers get the page, not a
+      stack of opacity: 0. That is the difference between an entrance and a
+      content-blocking animation.
+   2. prefers-reduced-motion removes all of it, not just the durations. A
+      collapsed transition is still a state change; a decorative loop should be
+      absent, and the query below sets animation: none rather than 1ms.
+   3. Nothing loops in view of text being read. The backdrop sits behind the
+      hero only, at an opacity where it reads as a lit surface rather than
+      motion in the periphery.
+-------------------------------------------------------------------------------- */
+
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The headline uncovers rather than fades: a wipe reads as type being set,
+   which is the one entrance that suits a display face. */
+@keyframes hero-uncover {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 105% 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 -20% 0);
+  }
+}
+
+.hero-anim .h-hero {
+  animation: hero-uncover 760ms var(--ease-enter) both;
+}
+
+.hero-anim .lead {
+  animation: hero-rise 560ms var(--ease-enter) 140ms both;
+}
+
+.hero-anim .cmd {
+  animation: hero-rise 560ms var(--ease-enter) 240ms both;
+}
+
+.hero-anim .hero-actions {
+  animation: hero-rise 560ms var(--ease-enter) 320ms both;
+}
+
+.hero-anim .meta {
+  animation: hero-rise 560ms var(--ease-enter) 400ms both;
+}
+
+/* -- the backdrop ------------------------------------------------------------ */
+
+.hero-glow {
+  position: absolute;
+  /* Inset 0 horizontally, not -10%. The bled version overflowed the document by
+     66px at phone widths -- body's overflow-x: hidden clipped it, so it was
+     invisible while still widening the page. A decorative layer must not be the
+     thing that makes the page wider than the viewport. */
+  inset: -20% 0 auto 0;
+  height: 120%;
+  z-index: -1;
+  pointer-events: none;
+  /* --color-accent-500 / -300, not --color-accent: the scale is numbered and
+     there is no unnumbered alias. The first version of this rule named one and
+     resolved the whole background to `none`, which is the failure mode of
+     writing CSS you have not looked at. */
+  background:
+    radial-gradient(60% 50% at 22% 18%, color-mix(in oklab, var(--color-accent-500) 18%, transparent), transparent 70%),
+    radial-gradient(45% 40% at 78% 8%, color-mix(in oklab, var(--color-accent-300) 10%, transparent), transparent 70%);
+  filter: blur(36px);
+  animation: glow-drift 22s var(--ease-linear) infinite alternate;
+}
+
+@keyframes glow-drift {
+  from {
+    transform: translate3d(-2%, -1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(3%, 2%, 0) scale(1.08);
+  }
+}
+
+/* -- scroll reveals ---------------------------------------------------------- */
+
+/* Only elements the script has armed are hidden. Unarmed markup renders
+   normally, which is what a crawler and a no-JS reader get. */
+.reveal-armed {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+}
+
+.reveal-armed.reveal-in {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 620ms var(--ease-enter) var(--reveal-delay, 0ms),
+    transform 620ms var(--ease-enter) var(--reveal-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-anim .h-hero,
+  .hero-anim .lead,
+  .hero-anim .cmd,
+  .hero-anim .hero-actions,
+  .hero-anim .meta,
+  .hero-glow {
+    animation: none;
+  }
+
+  .hero-glow {
+    display: none;
+  }
+
+  .reveal-armed,
+  .reveal-armed.reveal-in {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

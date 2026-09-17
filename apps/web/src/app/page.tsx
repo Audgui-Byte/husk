@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CodeBlock, CommandBlock } from "@/components/CodeBlock";
+import { Reveal } from "@/components/Reveal";
 import { IsolationViewer } from "@/components/IsolationViewer";
 import { StaticTerminal } from "@/components/StaticTerminal";
 import { TerminalReplay } from "@/components/TerminalReplay";
@@ -26,7 +27,12 @@ export default function Home() {
   return (
     <main id="main">
       {/* -------------------------------------------------------------- hero */}
-      <section className="container hero" aria-labelledby="hero-title">
+      <section
+        className="container hero hero-anim"
+        aria-labelledby="hero-title"
+        style={{ position: "relative" }}
+      >
+        <div className="hero-glow" aria-hidden="true" />
         <div>
           <div className="hero-copy hero-copy-wide">
             <h1 id="hero-title" className="h-hero">
@@ -38,7 +44,12 @@ export default function Home() {
               already had into a bot that does the job again tomorrow.
             </p>
 
-            <div style={{ marginTop: "var(--space-8)", maxWidth: "40rem" }}>
+            {/* 42rem, not 40. JetBrains Mono is wider than the fallback stack
+                the 40rem cap was measured against, so the real face pushed the
+                install command 4px past its box the moment the fonts landed —
+                a scrollbar on the one string that matters, caused by fixing
+                something else. */}
+            <div style={{ marginTop: "var(--space-8)", maxWidth: "42rem" }}>
               <CommandBlock command={MCP_COMMAND} size="lg" />
             </div>
 
@@ -94,17 +105,19 @@ export default function Home() {
 
       {/* ---------------------------------------------------------- two jobs */}
       <section className="container section" aria-labelledby="jobs-title">
-        <div className="section-head">
-          <p className="eyebrow">what it does</p>
-          <h2 id="jobs-title" className="h-section">
-            Husk does two things.
-          </h2>
-          <p className="prose" style={{ marginTop: "var(--space-4)" }}>
-            One binary. The first job hands a machine to an agent that does not
-            have one. The second takes a conversation you already finished and
-            keeps it running.
-          </p>
-        </div>
+        <Reveal>
+          <div className="section-head">
+            <p className="eyebrow">what it does</p>
+            <h2 id="jobs-title" className="h-section">
+              Husk does two things.
+            </h2>
+            <p className="prose" style={{ marginTop: "var(--space-4)" }}>
+              One binary. The first job hands a machine to an agent that does not
+              have one. The second takes a conversation you already finished and
+              keeps it running.
+            </p>
+          </div>
+        </Reveal>
 
         <div className="stack-16">
           <div className="grid12">
@@ -235,19 +248,21 @@ export default function Home() {
         aria-labelledby="providers-title"
         id="providers"
       >
-        <div className="section-head">
-          <p className="eyebrow">containment</p>
-          <h2 id="providers-title" className="h-section">
-            <code className="inline">husk doctor</code> tells you which one you
-            have.
-          </h2>
-          <p className="prose" style={{ marginTop: "var(--space-4)" }}>
-            Two of the five providers are not isolated in any meaningful sense.{" "}
-            <code className="inline">Availability.isolated</code> is on the
-            provider interface so that no part of this product ever has to be
-            vague about which two.
-          </p>
-        </div>
+        <Reveal>
+          <div className="section-head">
+            <p className="eyebrow">containment</p>
+            <h2 id="providers-title" className="h-section">
+              <code className="inline">husk doctor</code> tells you which one you
+              have.
+            </h2>
+            <p className="prose" style={{ marginTop: "var(--space-4)" }}>
+              Two of the five providers are not isolated in any meaningful sense.{" "}
+              <code className="inline">Availability.isolated</code> is on the
+              provider interface so that no part of this product ever has to be
+              vague about which two.
+            </p>
+          </div>
+        </Reveal>
 
         <div className="table-scroll" tabIndex={0} role="region" aria-labelledby="providers-title">
           <table className="data">
