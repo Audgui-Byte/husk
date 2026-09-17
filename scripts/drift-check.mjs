@@ -106,8 +106,18 @@ if (REPO_GIT) {
   });
 }
 
-/** The human-facing form: what a source file, a README or a link carries. */
-const REPO = (REPO_GIT ?? '').replace(/.git$/, '');
+/**
+ * The human-facing form: what a source file, a README or a link carries.
+ *
+ * Two things come off. `.git` is the clone suffix. `git+` is the scheme prefix
+ * npm expects on `repository.url` -- it adds it on publish whether or not the
+ * manifest had it, so writing it here is the difference between the registry
+ * agreeing with this repo and merely resembling it.
+ *
+ * The `.` is escaped. It was not, so the pattern also matched any character
+ * before a trailing `git`; harmless for this URL and wrong for the next one.
+ */
+const REPO = (REPO_GIT ?? '').replace(/^git\+/, '').replace(/\.git$/, '');
 
 if (REPO_GIT) {
   for (const dir of readdirSync(join(ROOT, 'packages'))) {
