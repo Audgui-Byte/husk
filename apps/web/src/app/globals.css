@@ -122,9 +122,17 @@ svg {
   grid-column: span 8;
 }
 
-/* Below 1024px every 12-column block collapses to one column. Asymmetry is a
-   wide-viewport affordance; on a phone it is an awkward wrap. */
-@media (max-width: 63.99rem) {
+/* Below 1152px every 12-column block collapses to one column. Asymmetry is a
+   wide-viewport affordance; on a phone it is an awkward wrap.
+
+   The threshold is 72rem, not the 64rem it used to be, because at 64rem the
+   split was the thing that broke the content it was splitting: `.col-7` at a
+   1024px viewport is 540px, and the widest `husk doctor` line needs 574px at
+   13.33px mono. The hero command block did the same, and worse -- 464px of
+   `claude mcp add husk ...` in 404px of column, because `.cmd-lg` reached for
+   19.2px type at the exact breakpoint the column got narrower. Two columns
+   are worth having only where both of them fit. */
+@media (max-width: 71.99rem) {
   .grid12 {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -135,8 +143,9 @@ svg {
 }
 
 /* Source order puts the terminal first in the chat-to-bot block so it sits on
-   the left at desktop width; on a phone the heading must come first. */
-@media (max-width: 63.99rem) {
+   the left at desktop width; stacked, the heading must come first. Bound to
+   the same width as the collapse above -- they describe one layout change. */
+@media (max-width: 71.99rem) {
   .order-first-sm {
     order: -1;
   }
