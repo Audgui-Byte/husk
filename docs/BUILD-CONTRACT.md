@@ -76,6 +76,14 @@ This table is the only copy of the ordering. It was previously written as a line
 in three files, and all three had drifted — `browser` was missing from every one of
 them, and `adapters` and `sdk` were shown above `agent` when neither imports it.
 
+**One test reaches upward, on purpose.** `packages/sdk/src/contract.test.ts` imports
+`@husk-ai/server` and `@husk-ai/runtime`, which sit above it. That is the whole point of
+the test: it boots the real server on a real socket with a real `LocalProvider` and
+drives every public `HuskClient` method over real HTTP and a real WebSocket, because a
+mocked `fetch` once let the SDK ship twelve methods pointed at routes that did not
+exist. The edge is a `devDependency`, so it is absent from anything published, and it is
+written down here rather than left to npm's hoisting to arrange quietly.
+
 ## Conventions
 
 - TypeScript, ESM only (`"type": "module"`). Relative imports **must** carry the `.js`

@@ -7,9 +7,13 @@
  * package mint key formats no pattern list knows about.
  */
 
-import { HuskError, redact, type HuskErrorCode } from '@husk-ai/core';
+import { HUSK_USER_AGENT, HuskError, redact, type HuskErrorCode } from '@husk-ai/core';
 
-export const HUSK_UA = 'husk/0.1.3 (+https://github.com/Hotragn/husk)';
+/**
+ * Historically its own literal, byte-identical to core's and free to drift
+ * from it. An alias, so there is nothing left to drift.
+ */
+export const HUSK_UA = HUSK_USER_AGENT;
 
 export interface ErrorContext {
   provider: string;

@@ -3,9 +3,15 @@
  *
  * The rule is: import the type from `@husk-ai/sdk` wherever the SDK and the
  * running server agree, and restate it here only where they still do not —
- * with a comment saying what the SDK claims instead. Every remaining
- * restatement was checked against `packages/server/src/routes/*.ts` on
- * `@husk-ai/server` 0.1.0, and the full list is in `apps/console/README.md`.
+ * with a comment saying what the SDK claims instead. Each restatement carries
+ * its own reason; this file is the list, and there is no second copy of it.
+ * It previously pointed at `apps/console/README.md`, which is still the Vite
+ * scaffold template and has never held one.
+ *
+ * Checked against `packages/server/src/routes/*.ts` and `packages/sdk/src` on
+ * 0.1.3. The note saying 0.1.0 had outlived two of the entries below it: the
+ * SDK has typed `GET /v1/computers` as an object since then, and it now has a
+ * `browse()` method, so both of those restatements are gone.
  *
  * `GET /v1/doctor` used to be the largest of those. It is not any more: the
  * server, `docs/API.md` and the SDK now describe one shape, so the doctor types
@@ -18,9 +24,10 @@
  */
 
 import type { SnapshotNode } from '@husk-ai/browser';
-import type { BrowseRequest } from '@husk-ai/core';
+import type { BrowseBody } from '@husk-ai/core';
 import type {
   ComputerInfo,
+  ComputerListResponse,
   ComputerSpec,
   DirEntry,
   DoctorModelProvider,
@@ -35,6 +42,7 @@ import type {
 
 export type {
   ComputerInfo,
+  ComputerListResponse,
   ComputerSpec,
   DirEntry,
   DoctorModelProvider,
@@ -80,10 +88,6 @@ export interface DoctorProvider extends SdkDoctorProvider {
 /** `GET /v1/doctor`. The SDK's report, with the provider fix above applied. */
 export type DoctorReport = Omit<SdkDoctorReport, 'providers'> & { providers: DoctorProvider[] };
 
-/** `GET /v1/computers` — an object, not the bare array `@husk-ai/sdk` types. */
-export interface ComputerListResponse {
-  computers: ComputerInfo[];
-}
 
 /** `GET /v1/computers/:id/fs?path=` */
 export interface DirListResponse {
@@ -93,18 +97,18 @@ export interface DirListResponse {
 /**
  * `POST /v1/computers/:id/browse` -> `BrowsePage`.
  *
- * These come straight from `@husk-ai/core`, not from `@husk-ai/sdk`: the SDK has no
- * browse surface at all — no client method, and its `types.ts` re-export list
- * does not include the browse types — so this is the one place the console
- * reaches past the SDK to the package the route actually returns. Nothing here
- * is restated.
+ * These come straight from `@husk-ai/core`, not from `@husk-ai/sdk`. The SDK
+ * calls this route now — `HuskClient.computers.browse()` — but its `types.ts`
+ * re-export list still does not carry the browse types, so core remains the
+ * only place to get them. Nothing here is restated.
  *
- * The request body is `BrowseRequest` minus `signal`, which is an in-process
- * handle rather than a wire field. The route's zod schema is `.strict()`, so
- * serialising it would 422.
+ * The request body is `BrowseBody`, which core already splits out of
+ * `BrowseRequest` for exactly this reason: `signal` is an in-process handle
+ * rather than a wire field, and the route's zod schema is `.strict()`, so
+ * sending it would 422. The console used to rebuild that type by hand.
  */
 export type { BrowseLink, BrowsePage } from '@husk-ai/core';
-export type BrowseRequestBody = Omit<BrowseRequest, 'signal'>;
+export type BrowseRequestBody = BrowseBody;
 
 /**
  * `POST /v1/computers/:id/browser/*` — the real Chromium.

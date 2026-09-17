@@ -33,7 +33,12 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 let scratch: string | undefined;
 
 afterAll(() => {
-  if (scratch) rmSync(scratch, { recursive: true, force: true });
+  // `maxRetries` for the same reason as smoke.test.ts (#80): this directory has
+  // just had `npm pack` and `npm install` running inside it, and Windows keeps a
+  // handle on a reaped process's working directory long enough for an unretried
+  // rmdir to lose with EBUSY. Gated on HUSK_INTEGRATION, so it has had far fewer
+  // chances to flake -- not fewer reasons to.
+  if (scratch) rmSync(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 });
 
 describe.skipIf(!integration)('the published tarball', () => {

@@ -21,6 +21,7 @@ import type {
 } from '@husk-ai/core';
 import { type ImagePlan, installScript, resolveImage } from '../images.js';
 import { OutputBuffer, evaluateCommand } from '../policy.js';
+import { expired, forgetInfo, lastUsedTimes, touchInfo } from '../registry.js';
 
 /**
  * Everything Docker and Podman have in common, which is very nearly everything.
@@ -338,6 +339,11 @@ export class OciComputer implements Computer {
     });
 
     const started = Date.now();
+    // Recorded at the start as well as at the end. `finish` alone would leave
+    // a long build looking untouched for its whole duration, and the reaper
+    // would destroy the container it was running in.
+    this.info.lastUsedAt = new Date().toISOString();
+    void touchInfo(this.info.id).catch(() => {});
     const maxBytes = req.maxOutputBytes ?? 256 * 1024;
     const out = new OutputBuffer(maxBytes);
     const err = new OutputBuffer(maxBytes);
@@ -355,6 +361,7 @@ export class OciComputer implements Computer {
         if (timer) clearTimeout(timer);
         req.signal?.removeEventListener('abort', onAbort);
         this.info.lastUsedAt = new Date().toISOString();
+        void touchInfo(this.info.id).catch(() => {});
         settle(result);
       };
 
@@ -686,6 +693,9 @@ export class OciComputer implements Computer {
     const keyed = Boolean(this.info.spec.labels?.['husk.key']);
     const args = keyed ? ['rm', '-f', this.native] : ['rm', '-f', '-v', this.native];
     await this.cli(args, 120_000).catch(() => {});
+    // The last-use record outlives the container otherwise, and ids are
+    // unique, so the file would sit in ~/.husk/computers forever.
+    await forgetInfo(this.info.id).catch(() => {});
     this.info.state = 'destroyed';
   }
 
@@ -1086,10 +1096,45 @@ export abstract class OciProvider implements ComputerProvider {
         const info = await this.inspect(nativeId).catch(() => null);
         if (info) out.push(info);
       }
+
+      // `inspect` can only offer the container's start time for `lastUsedAt`.
+      // Overlay the real one where husk has recorded it, and leave the
+      // engine's answer alone where it has not -- a missing record must never
+      // make a container look idler than it is.
+      const used = await lastUsedTimes().catch(() => new Map<string, string>());
+      for (const info of out) {
+        const at = used.get(info.id);
+        if (at) info.lastUsedAt = at;
+      }
       return out;
     } catch {
       return [];
     }
+  }
+
+  /**
+   * Sweep containers past their idle or lifetime budget.
+   *
+   * This did not exist, and `ComputerManager.reap()` skips a provider with no
+   * `reap` on a bare `continue` -- so on docker and podman, the two providers
+   * the docs recommend for real isolation, `idleTimeoutSec` was accepted,
+   * recorded in the spec and never acted on. Nothing said so: the reaper logs
+   * only when it removed something, so "not implemented" and "swept, found
+   * nothing" produced identical output.
+   *
+   * `expired` is shared with the other providers deliberately. Budget
+   * arithmetic in two places is two chances to get an off-by-one wrong in a
+   * function whose job is deleting the user's work.
+   */
+  async reap(): Promise<string[]> {
+    const removed: string[] = [];
+    for (const info of expired(await this.list())) {
+      const c = await this.get(info.id).catch(() => null);
+      if (!c) continue;
+      await c.destroy();
+      removed.push(info.id);
+    }
+    return removed;
   }
 
   private async inspect(nativeId: string): Promise<ComputerInfo | null> {

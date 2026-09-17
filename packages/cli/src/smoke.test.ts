@@ -60,7 +60,24 @@ describe('packaging', () => {
  * `force` alone does not help: it suppresses "does not exist", not "is busy".
  */
 function removeDir(dir: string): void {
-  rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  try {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  } catch (err) {
+    // The retries above are the fix for the common case and were not enough:
+    // this recurred on a Windows runner within hours of them landing. Ten
+    // attempts over about five seconds is a guess at how long a handle is
+    // held, and any number here is a guess.
+    //
+    // So teardown stops being able to fail the run. Everything this file
+    // asserts has already passed by the time it gets here; the directory is
+    // under the OS temp dir, and a CI runner is discarded whole. Trading a
+    // few kilobytes nobody will look for against a red build that says
+    // nothing about the code is not a close call.
+    //
+    // Reported rather than swallowed, so a leak that becomes a pattern is
+    // visible instead of silent.
+    console.warn(`[smoke] could not remove ${dir}: ${(err as Error).message}`);
+  }
 }
 
 let home: string;

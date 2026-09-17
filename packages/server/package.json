@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Hotragn/husk.git",
+    "url": "git+https://github.com/Hotragn/husk.git",
     "directory": "packages/server"
   },
   "homepage": "https://github.com/Hotragn/husk/tree/main/packages/server#readme",
