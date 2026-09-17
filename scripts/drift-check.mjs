@@ -260,6 +260,16 @@ if (SITES_ONLY) {
     );
     absent(site, 'husk.sh', 'SITE_URL reads NEXT_PUBLIC_SITE_URL; no domain belongs here');
   }
+  // The nav's Docs link is the one cross-site link on either site, and it must
+  // not hardcode a hostname for the same reason SITE_URL does not: the docs are
+  // a separate Vercel project today and a subdomain the day a real domain
+  // exists. Only `apps/web` has it; the docs site does not link back.
+  contains(
+    'apps/web/src/lib/content.ts',
+    'process.env.NEXT_PUBLIC_DOCS_URL',
+    'the docs hostname is set at deploy time, never written down here',
+  );
+
   contains(
     "apps/docs/src/lib/site.ts",
     `HUSK_VERSION = '${VERSION}'`,
