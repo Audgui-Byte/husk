@@ -52,7 +52,26 @@ describe('the note the model reads first', () => {
       // still runs `ls -la /work`, because nothing told it not to.
       for (const note of [broken, absent]) {
         expect(note).toMatch(/NOT Linux/);
-        expect(note).toMatch(/POSIX commands/);
+        expect(note).toMatch(/\$VAR does not expand/);
+      }
+    });
+
+    it('warns about the silent failures, not just the loud one', () => {
+      // Measured against the real cmd.exe: a missing command is loud and
+      // recoverable, but `$VAR` and `'...'` produce a wrong answer at exit 0,
+      // and nothing downstream can tell that it happened.
+      for (const note of [broken, absent]) {
+        expect(note).toMatch(/single quotes' are not quotes/);
+        expect(note).toMatch(/exit 0/);
+      }
+    });
+
+    it('does not claim unix tools are absent, because that depends', () => {
+      // Git for Windows puts cat, sed, grep, chmod and uname on PATH, so
+      // "POSIX commands are unavailable" is false on a developer machine --
+      // the same category of error as overclaiming isolation, reversed.
+      for (const note of [broken, absent]) {
+        expect(note).toMatch(/may or may not be on PATH/);
       }
     });
 
@@ -61,7 +80,7 @@ describe('the note the model reads first', () => {
       // never learns their computer is degraded, and the husk they are
       // building stops being portable.
       for (const note of [broken, absent]) {
-        expect(note).toMatch(/tell the user/);
+        expect(note).toMatch(/tell the user/i);
       }
     });
 
