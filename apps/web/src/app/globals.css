@@ -925,6 +925,24 @@ table.data tbody tr:hover {
   grid-column: span 7;
 }
 
+/* The hero is one column now: the transcript that used to sit beside it needs
+   the full bleed to hold 16px mono, so it sits underneath instead.
+
+   44rem, not `--measure-prose`. A prose measure is 68ch, which is 587px here,
+   and the install command needs 464px of 19.2px mono plus its copy button --
+   capping the hero at a reading measure put the one string that matters back
+   behind a scrollbar, and wrapped the headline onto four lines. The lead keeps
+   the prose measure on its own, because that is the part anyone reads as
+   prose. */
+.hero-copy-wide {
+  grid-column: auto;
+  max-width: 44rem;
+}
+
+.hero-copy-wide .lead {
+  max-width: var(--measure-prose);
+}
+
 .hero-figure {
   grid-column: span 5;
   align-self: start;

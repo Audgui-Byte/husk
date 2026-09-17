@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const alt =
-  "Husk — give your agent a computer. claude mcp add husk -- npx -y @husk-ai/mcp";
+  "Husk — a real computer for your AI chat. claude mcp add husk -- npx -y @husk-ai/mcp";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -75,7 +75,7 @@ export default function OpengraphImage() {
               color: C.text,
             }}
           >
-            Give your agent a computer.
+            A real computer for your AI chat.
           </div>
           <div
             style={{
@@ -88,8 +88,8 @@ export default function OpengraphImage() {
               maxWidth: 900,
             }}
           >
-            A disposable Linux machine your agent can drive: shell, filesystem,
-            ports. No account, no card, no telemetry.
+            Files, a browser, and somewhere to run code. Free. No account, no
+            card.
           </div>
         </div>
 

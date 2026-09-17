@@ -17,7 +17,7 @@ export const DOCS_URL = `${REPO_URL}#readme`;
 export const LICENCE = "Apache-2.0";
 
 export const SITE_DESCRIPTION =
-  "Husk gives any AI agent a disposable Linux computer, and turns any chat into a bot. Runs free on your machine. No account, no telemetry.";
+  "Husk gives your AI chat a real computer of its own: files, a browser, and somewhere to run code. Turn a chat you already had into a bot that does the job again tomorrow. Free. No account, no card.";
 
 export const MCP_COMMAND = "claude mcp add husk -- npx -y @husk-ai/mcp";
 
@@ -243,7 +243,14 @@ triggers:
    MCP tool surface — README.md "Give Claude Code a computer".
 -------------------------------------------------------------------------------- */
 
-/** Keep in step with `packages/mcp` — this list is a promise, not a summary. */
+/**
+ * Keep in step with `packages/mcp` — this list is a promise, not a summary.
+ *
+ * It was a summary for a while, and that is why BROWSER_TOOLS exists below.
+ * `packages/mcp/src/tools.ts` spreads `...BROWSER_TOOLS` into the same list the
+ * model sees, so a reader who counted seven here and thirteen more there would
+ * have caught the site short.
+ */
 export const MCP_TOOLS: Array<{ name: string; what: string }> = [
   { name: "shell", what: "run a command, get stdout, stderr and an exit code" },
   { name: "read_file", what: "read a path inside the workspace" },
@@ -253,3 +260,20 @@ export const MCP_TOOLS: Array<{ name: string; what: string }> = [
   { name: "expose_port", what: "publish a port the agent started listening on" },
   { name: "computer_info", what: "kernel, cpus, memory, disk and network, so the model stops probing" },
 ];
+
+/**
+ * The browser, from `packages/mcp/src/browser-tools.ts`. Five of thirteen — the
+ * five that make the shape obvious. A real Chromium inside the computer, driven
+ * by structured page text rather than by pixels, which is why an agent can use
+ * it without seeing.
+ */
+export const BROWSER_TOOLS: Array<{ name: string; what: string }> = [
+  { name: "browser_goto", what: "open a URL in a real Chromium and return the rendered text" },
+  { name: "browser_snapshot", what: "list everything readable or clickable, each with a ref" },
+  { name: "browser_click", what: "click an element the snapshot named" },
+  { name: "browser_type", what: "type into a field" },
+  { name: "browser_screenshot", what: "take a PNG, for checking a layout or showing a human" },
+];
+
+/** Thirteen ship; the list above is the first five. */
+export const BROWSER_TOOL_COUNT = 13;
