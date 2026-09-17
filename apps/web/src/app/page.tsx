@@ -6,6 +6,8 @@ import { IsolationViewer } from "@/components/IsolationViewer";
 import { StaticTerminal } from "@/components/StaticTerminal";
 import { TerminalReplay } from "@/components/TerminalReplay";
 import {
+  BROWSER_TOOLS,
+  BROWSER_TOOL_COUNT,
   DISTILL,
   DOCTOR,
   HUSK_YAML,
@@ -16,7 +18,7 @@ import {
 } from "@/lib/content";
 
 export const metadata: Metadata = {
-  title: "Husk — give your agent a computer",
+  title: "Husk — a real computer for your AI chat",
   alternates: { canonical: "/" },
 };
 
@@ -25,16 +27,15 @@ export default function Home() {
     <main id="main">
       {/* -------------------------------------------------------------- hero */}
       <section className="container hero" aria-labelledby="hero-title">
-        <div className="grid12">
-          <div className="hero-copy">
+        <div>
+          <div className="hero-copy hero-copy-wide">
             <h1 id="hero-title" className="h-hero">
-              Give your agent a computer.
+              Your AI chat gets a real computer of its own.
             </h1>
             <p className="lead" style={{ marginTop: "var(--space-6)" }}>
-              A disposable Linux machine your agent can drive: shell,
-              filesystem, ports. Docker when it is there, a guarded local
-              workspace when it is not, and <code className="inline">husk doctor</code>{" "}
-              tells you which one you got. No account, no card, no telemetry.
+              Files, a browser, and somewhere to run code. It can build things,
+              look stuff up online and keep your work as you go. Turn a chat you
+              already had into a bot that does the job again tomorrow.
             </p>
 
             <div style={{ marginTop: "var(--space-8)", maxWidth: "40rem" }}>
@@ -55,15 +56,40 @@ export default function Home() {
             </div>
 
             <p className="meta" style={{ marginTop: "var(--space-6)" }}>
-              Apache-2.0 · works with Claude Code, Cursor, Zed, or anything
-              speaking MCP
+              Free. No account, no card. Apache-2.0 · works with Claude Code,
+              Cursor, Zed, or anything speaking MCP
             </p>
           </div>
 
-          <div className="hero-figure">
-            <IsolationViewer />
+        </div>
+
+        {/* The proof, directly under the claim. "A real computer" is a sentence
+            anyone can write; this is twenty seconds of one running on a laptop
+            that had neither Docker nor an API key, and it refuses a command at
+            the end rather than pretending.
+
+            Full bleed because it has to be: globals.css only gives `.term-wide`
+            16px mono at the width the bleed provides, and a terminal in a grid
+            column is a terminal with a scrollbar. The isolation viewer used to
+            hold this slot and answers "how contained is it?" — question three,
+            asked by nobody who has not already decided to try the thing. It now
+            sits in Providers, where the reader is asking it. */}
+        <div className="bleed" style={{ marginTop: "var(--space-12)" }}>
+          <div className="container container-2xl">
+            <TerminalReplay />
           </div>
         </div>
+
+        <p
+          className="small"
+          style={{ marginTop: "var(--space-4)", maxWidth: "var(--measure-prose)" }}
+        >
+          That ran on a Windows laptop with no Docker and no API key. The local
+          provider found WSL2 and gave it a real kernel and a real{" "}
+          <code className="inline">/work</code>. Then it refused a command that
+          would not have been recoverable, and said what to change if the refusal
+          was wrong.
+        </p>
       </section>
 
       {/* ---------------------------------------------------------- two jobs */}
@@ -140,43 +166,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* -------------------------------------------------------- the replay */}
-      <section className="container section" aria-labelledby="session-title">
-        <div className="section-head">
-          <p className="eyebrow">recorded session</p>
-          <h2 id="session-title" className="h-section">
-            This ran on a Windows laptop with no Docker and no API key.
-          </h2>
-          <p className="prose" style={{ marginTop: "var(--space-4)" }}>
-            The local provider found WSL2 and gave it a real kernel and a real{" "}
-            <code className="inline">/work</code>. Then it refused a command
-            that would not have been recoverable, and said what to change if the
-            refusal was wrong.
-          </p>
-        </div>
-
-        <div className="bleed">
-          <div className="container container-2xl">
-            <TerminalReplay />
-          </div>
-        </div>
-
-        <div
-          className="callout"
-          style={{ marginTop: "var(--space-8)", maxWidth: "var(--measure-prose)" }}
-        >
-          <p>
-            <span className="callout-code">guardrails, not a sandbox</span>
-            The local provider pins the working directory, resolves every path
-            through <code className="inline">realpath</code> and refuses
-            escapes, strips credential-shaped environment variables, caps
-            output, and kills the process tree on timeout. That stops accidents.
-            It will not stop an adversary, and a prompt-injected model is closer
-            to an adversary than to an accident.
-          </p>
-        </div>
-      </section>
-
       {/* ------------------------------------------------------------- mcp */}
       <section className="container section" aria-labelledby="mcp-title" id="mcp">
         <div className="grid12">
@@ -193,8 +182,9 @@ export default function Home() {
             <div className="prose" style={{ marginTop: "var(--space-6)" }}>
               <p>
                 There is no second step and no config file to edit. Claude Code
-                gets seven tools against a real Linux machine, and the filesystem
-                persists for the rest of the conversation. The same server
+                gets twenty tools against a real Linux machine — a shell, the
+                filesystem, ports, and a browser — and that filesystem persists
+                for the rest of the conversation. The same server
                 speaks streamable HTTP, so Cursor, Zed and anything else that
                 talks MCP get the same thing.
               </p>
@@ -208,7 +198,7 @@ export default function Home() {
 
           <div className="col-5">
             <h3 className="footer-heading" style={{ marginTop: "var(--space-4)" }}>
-              what the model gets
+              the computer
             </h3>
             <ul className="rule-list">
               {MCP_TOOLS.map((tool) => (
@@ -218,6 +208,23 @@ export default function Home() {
                 </li>
               ))}
             </ul>
+
+            <h3 className="footer-heading" style={{ marginTop: "var(--space-8)" }}>
+              the browser
+            </h3>
+            <ul className="rule-list">
+              {BROWSER_TOOLS.map((tool) => (
+                <li key={tool.name}>
+                  <span className="rl-term">{tool.name}</span>
+                  <span className="rl-desc">{tool.what}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="small" style={{ marginTop: "var(--space-3)" }}>
+              {BROWSER_TOOL_COUNT} in all. A real Chromium inside the computer,
+              driven by structured page text rather than pixels — which is why an
+              agent can use it without seeing.
+            </p>
           </div>
         </div>
       </section>
@@ -287,6 +294,32 @@ export default function Home() {
           asked for. Asking for <code className="inline">--provider docker</code>{" "}
           with the daemon down is an error, not a downgrade.
         </p>
+
+        {/* The viewer answers "how contained is the one I got?", which is a
+            question you only have once the table above has given you the word
+            for it. It spent the first release in the hero, three sections
+            before anyone was asking. */}
+        <div className="grid12" style={{ marginTop: "var(--space-12)" }}>
+          <div className="col-5">
+            <IsolationViewer />
+          </div>
+          <div className="col-7">
+            <div
+              className="callout"
+              style={{ maxWidth: "var(--measure-prose)" }}
+            >
+              <p>
+                <span className="callout-code">guardrails, not a sandbox</span>
+                The local provider pins the working directory, resolves every
+                path through <code className="inline">realpath</code> and refuses
+                escapes, strips credential-shaped environment variables, caps
+                output, and kills the process tree on timeout. That stops
+                accidents. It will not stop an adversary, and a prompt-injected
+                model is closer to an adversary than to an accident.
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* -------------------------------------------------------- husk.yaml */}
