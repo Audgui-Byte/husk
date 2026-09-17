@@ -55,6 +55,11 @@ export function resolve(...parts: string[]): string {
   return unavailable('node:path', 'resolve');
 }
 
+export function dirname(path: string): string {
+  void path;
+  return unavailable('node:path', 'dirname');
+}
+
 // -- node:fs ------------------------------------------------------------------
 
 export function existsSync(path: string): boolean {
