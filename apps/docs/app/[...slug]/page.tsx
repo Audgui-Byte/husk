@@ -41,14 +41,22 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical: doc.href },
+    /* One image, two jobs: `/preview/<slug>` is the same card the hover
+       previews on the landing page show. */
     openGraph: {
       type: 'article',
       siteName: SITE_NAME,
       url: doc.href,
       title,
       description,
+      images: [`/preview${doc.href}`],
     },
-    twitter: { card: 'summary_large_image', title, description },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [`/preview${doc.href}`],
+    },
   };
 }
 

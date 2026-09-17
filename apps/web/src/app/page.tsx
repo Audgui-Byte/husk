@@ -2,14 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CodeBlock } from "@/components/CodeBlock";
+import { ContainerScroll } from "@/components/ContainerScroll";
 import { HeroObject } from "@/components/HeroObject";
 import { InstallSelector } from "@/components/InstallSelector";
+import { LinkPreview } from "@/components/LinkPreview";
 import { ScrollCue } from "@/components/ScrollCue";
 import { ScrollNarrative } from "@/components/ScrollNarrative";
 import { Reveal } from "@/components/Reveal";
 import { IsolationViewer } from "@/components/IsolationViewer";
 import { StaticTerminal } from "@/components/StaticTerminal";
 import { TerminalReplay } from "@/components/TerminalReplay";
+import { PREVIEWS } from "@/lib/previews";
 import {
   BROWSER_TOOLS,
   ONBOARDING,
@@ -19,7 +22,6 @@ import {
   HUSK_YAML,
   MCP_TOOLS,
   PROVIDERS,
-  REPO_URL,
 } from "@/lib/content";
 
 export const metadata: Metadata = {
@@ -71,13 +73,9 @@ export default function Home() {
               <a className="btn btn-primary btn-lg" href="#mcp">
                 What that command does
               </a>
-              <a
-                className="btn btn-secondary btn-lg"
-                href={REPO_URL}
-                rel="noreferrer noopener"
-              >
+              <LinkPreview {...PREVIEWS.source} className="btn btn-secondary btn-lg">
                 Read the source
-              </a>
+              </LinkPreview>
             </div>
 
             <p className="meta" style={{ marginTop: "var(--space-6)" }}>
@@ -206,10 +204,12 @@ export default function Home() {
       <section className="container section" aria-labelledby="mcp-title" id="mcp">
         <div className="grid12">
           <div className="col-7">
-            <p className="eyebrow">the whole install</p>
-            <h2 id="mcp-title" className="h-section">
-              One line gives your client a machine.
-            </h2>
+            <Reveal>
+              <p className="eyebrow">the whole install</p>
+              <h2 id="mcp-title" className="h-section">
+                One line gives your client a machine.
+              </h2>
+            </Reveal>
 
             <div style={{ marginTop: "var(--space-8)" }}>
               <InstallSelector size="lg" idPrefix="mcp-install" />
@@ -406,10 +406,12 @@ export default function Home() {
       >
         <div className="grid12">
           <div className="col-4">
-            <p className="eyebrow">the unit of value</p>
-            <h2 id="yaml-title" className="h-section">
-              What comes out is a file you can read.
-            </h2>
+            <Reveal>
+              <p className="eyebrow">the unit of value</p>
+              <h2 id="yaml-title" className="h-section">
+                What comes out is a file you can read.
+              </h2>
+            </Reveal>
             <div className="prose" style={{ marginTop: "var(--space-4)" }}>
               <p>
                 Deliberate key order, block scalars, and a provenance header
@@ -426,11 +428,11 @@ export default function Home() {
             </div>
           </div>
           <div className="col-8">
-            <CodeBlock
-              title="triage.yaml"
-              source={HUSK_YAML}
-              what="husk.yaml"
-            />
+            {/* The frame is unchanged -- same title bar, same copy button, same
+                highlighted source. The wrapper only tilts it. */}
+            <ContainerScroll>
+              <CodeBlock title="triage.yaml" source={HUSK_YAML} what="husk.yaml" />
+            </ContainerScroll>
           </div>
         </div>
       </section>
@@ -439,10 +441,12 @@ export default function Home() {
       <section className="container section" aria-labelledby="free-title" id="free">
         <div className="grid12">
           <div className="col-7">
-            <p className="eyebrow">cost</p>
-            <h2 id="free-title" className="h-section">
-              The free path is the same path everything else is built on.
-            </h2>
+            <Reveal>
+              <p className="eyebrow">cost</p>
+              <h2 id="free-title" className="h-section">
+                The free path is the same path everything else is built on.
+              </h2>
+            </Reveal>
             <div className="prose" style={{ marginTop: "var(--space-6)" }}>
               <p>
                 The local provider is the primitive. Docker, Podman, SSH and Fly
@@ -459,10 +463,10 @@ export default function Home() {
                 same way we do, by reading the repository.
               </p>
               <p>
-                <Link href="/pricing">
+                <LinkPreview {...PREVIEWS.pricing}>
                   What a hosted tier would have to add before it was worth
                   charging for
-                </Link>
+                </LinkPreview>
                 .
               </p>
             </div>

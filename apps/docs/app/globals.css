@@ -1521,3 +1521,103 @@ html:not([data-theme]) .theme-icon-dark {
     display: block;
   }
 }
+
+/* -----------------------------------------------------------------------------
+   Link previews.
+
+   A floating card on hover or focus, showing the destination's own share
+   image. Absolutely positioned inside an inline-block wrapper, so it cannot
+   reflow the sentence it sits in -- section 3 bans hover effects that move
+   layout, and an inline link inside a paragraph is the least forgiving place
+   to break that rule.
+
+   Opaque surface, not glass. Section 8.10: a backdrop-filter panel over
+   scrolling text has a contrast ratio that changes with whatever is behind it,
+   so the same card is compliant in one scroll position and not in the next.
+-------------------------------------------------------------------------------- */
+
+.lp {
+  position: relative;
+  display: inline-block;
+}
+
+.lp-card {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  width: 20rem;
+  overflow: hidden;
+  border: var(--border-width-hairline) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--duration-3) var(--ease-exit),
+    transform var(--duration-3) var(--ease-exit);
+}
+
+/* The script writes left and top; these two decide which way the card hangs
+   off that point, so a link near the top of the window flips below it. */
+.lp-card[data-side='above'] {
+  transform: translate(-50%, calc(-100% - 4px));
+}
+
+.lp-card[data-side='below'] {
+  transform: translate(-50%, 4px);
+}
+
+.lp[data-open='true'] .lp-card {
+  opacity: 1;
+  transition:
+    opacity var(--duration-3) var(--ease-enter),
+    transform var(--duration-3) var(--ease-enter);
+}
+
+.lp[data-open='true'] .lp-card[data-side='above'] {
+  transform: translate(-50%, -100%);
+}
+
+.lp[data-open='true'] .lp-card[data-side='below'] {
+  transform: translate(-50%, 0);
+}
+
+.lp-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-bottom: var(--border-width-hairline) solid var(--color-border);
+}
+
+.lp-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.lp-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.lp-summary {
+  font-size: var(--font-size-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-muted);
+}
+
+/* The docs section grid is a grid whose children are the cards. The wrapper is
+   the child now, so it has to behave like one -- and `overflow: hidden` on
+   that grid is exactly why the card is fixed rather than absolute. */
+.section-grid > .lp {
+  display: block;
+}
+
+.section-grid > .lp > .section-card {
+  height: 100%;
+}
+

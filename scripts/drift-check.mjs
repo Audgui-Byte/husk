@@ -244,7 +244,13 @@ if (SITES_ONLY) {
   // only watched `apps/web` had nothing to say about it. The positive half is
   // the half that matters here: a file that reads the env var cannot hardcode a
   // domain, and a file that has no SITE_URL at all fails this outright.
-  for (const site of ['apps/web/src/lib/content.ts', 'apps/docs/src/lib/site.ts']) {
+  //
+  // SITE_URL moved out of content.ts / site.ts into its own module. Both
+  // VERCEL_ variables it now falls back to are absent from a client bundle --
+  // they are not NEXT_PUBLIC_ -- and content.ts is imported by client
+  // components, so the resolution has to live somewhere only server code
+  // imports. These assertions follow it; the invariants are unchanged.
+  for (const site of ['apps/web/src/lib/site-url.ts', 'apps/docs/src/lib/site-url.ts']) {
     contains(
       site,
       'process.env.NEXT_PUBLIC_SITE_URL',
@@ -255,10 +261,18 @@ if (SITES_ONLY) {
     // every `<loc>` in the sitemap as `//`. Verified by building with one.
     contains(
       site,
-      'SITE_URL = stripTrailingSlash(',
+      'stripTrailingSlash(',
       'strip the trailing slash: NEXT_PUBLIC_SITE_URL is typed by hand and a slash doubles in every canonical URL',
     );
-    absent(site, 'husk.sh', 'SITE_URL reads NEXT_PUBLIC_SITE_URL; no domain belongs here');
+    // The fallbacks that stop this recurring on a project where nobody set the
+    // explicit variable. Production canonicals came out as localhost on every
+    // route until these landed.
+    contains(
+      site,
+      'VERCEL_PROJECT_PRODUCTION_URL',
+      'fall back to the project production host, so a missing variable is not a localhost canonical',
+    );
+    absent(site, 'husk.sh', 'SITE_URL reads the environment; no domain belongs here');
   }
   // The nav's Docs link is the one cross-site link on either site, and it must
   // not hardcode a hostname for the same reason SITE_URL does not: the docs are

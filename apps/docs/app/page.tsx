@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { LinkPreview } from '@/components/LinkPreview';
 import { Terminal } from '@/components/Terminal';
-import { nav } from '@/lib/content';
+import { allDocs, nav } from '@/lib/content';
 import { SITE_DESCRIPTION, SITE_NAME } from '@/lib/site';
 
 const TITLE = 'Husk documentation';
@@ -29,6 +30,25 @@ export const metadata: Metadata = {
  */
 export default function Home() {
   const sections = nav();
+
+  /**
+   * The five cross-references below point at pages that already carry a title
+   * and a one-sentence description in their frontmatter. This reads those
+   * rather than restating them, so a preview cannot drift from the page it is
+   * previewing. The hash is dropped for the lookup and kept for the link.
+   */
+  const docs = allDocs();
+  const preview = (href: string) => {
+    /* noUncheckedIndexedAccess makes [0] possibly undefined even for split. */
+    const path = href.split('#')[0] ?? href;
+    const doc = docs.find((d) => d.href === path);
+    return {
+      href,
+      image: `/preview${path}`,
+      title: doc?.frontmatter.title ?? path,
+      summary: doc?.frontmatter.description ?? '',
+    };
+  };
 
   return (
     <main className="landing" id="content">
@@ -104,17 +124,29 @@ hint:  add a pattern to guardrails.allowCommands in husk.yaml if this is intenti
       <section className="section">
         <h2 className="section-title">Documentation</h2>
         <div className="section-grid">
-          {sections.map((section) => (
-            <Link className="section-card" href={section.items[0]?.href ?? '/'} key={section.dir}>
-              <span className="section-card-title">
-                {section.title}
-                <span className="section-card-count">
-                  {section.items.length} {section.items.length === 1 ? 'page' : 'pages'}
+          {sections.map((section) => {
+            const href = section.items[0]?.href ?? '/';
+            return (
+              <LinkPreview
+                key={section.dir}
+                href={href}
+                /* The destination's own share card, from the same frontmatter
+                   this card shows, so the preview cannot disagree with it. */
+                image={`/preview${href}`}
+                title={section.items[0]?.title ?? section.title}
+                summary={section.items[0]?.description ?? ''}
+                className="section-card"
+              >
+                <span className="section-card-title">
+                  {section.title}
+                  <span className="section-card-count">
+                    {section.items.length} {section.items.length === 1 ? 'page' : 'pages'}
+                  </span>
                 </span>
-              </span>
-              <p className="section-card-body">{section.items[0]?.description}</p>
-            </Link>
-          ))}
+                <span className="section-card-body">{section.items[0]?.description}</span>
+              </LinkPreview>
+            );
+          })}
         </div>
       </section>
 
@@ -130,18 +162,22 @@ hint:  add a pattern to guardrails.allowCommands in husk.yaml if this is intenti
           </p>
           <p>
             The current set of those, so you can find them quickly:{' '}
-            <Link href="/mcp#transports">MCP is stdio only</Link>,{' '}
-            <Link href="/computers/lifetimes">the reaper does not sweep containers</Link>,{' '}
-            <Link href="/chat-to-bot/triggers">
+            <LinkPreview {...preview('/mcp#transports')}>MCP is stdio only</LinkPreview>,{' '}
+            <LinkPreview {...preview('/computers/lifetimes')}>
+              the reaper does not sweep containers
+            </LinkPreview>
+            ,{' '}
+            <LinkPreview {...preview('/chat-to-bot/triggers')}>
               Discord, Slack and Telegram triggers are not wired up
-            </Link>
-            , <Link href="/models#fallback">
+            </LinkPreview>
+            ,{' '}
+            <LinkPreview {...preview('/models#fallback')}>
               husk run ignores fallbackModels
-            </Link>
+            </LinkPreview>
             , and{' '}
-            <Link href="/reference/sdk">
+            <LinkPreview {...preview('/reference/sdk')}>
               the SDK targets a different API than the one the server serves
-            </Link>
+            </LinkPreview>
             .
           </p>
           <p>

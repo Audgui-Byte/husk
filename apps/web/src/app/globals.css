@@ -933,11 +933,38 @@ table.data tbody tr:hover {
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* Two columns at --bp-md, five at --bp-lg. Four link lists plus the brand does
+   not fit at 768 without each column wrapping every label onto two lines. */
 @media (min-width: 48rem) {
   .footer-grid {
-    grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-8);
   }
+
+  .footer-brand {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 64rem) {
+  .footer-grid {
+    grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr));
+  }
+
+  .footer-brand {
+    grid-column: auto;
+  }
+}
+
+/* The wordmark at a size worth looking at. No shimmer, no gradient: the mark
+   is the one element on the page that is purely the brand, and
+   brand/logo/USAGE.md bans decoration on it outright. Large is the part of
+   that idea that survives the rule. */
+.footer-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text);
 }
 
 .footer-heading {
@@ -963,10 +990,28 @@ table.data tbody tr:hover {
   border-radius: var(--radius-xs);
 }
 
-.footer-list a:hover {
+/* The underline draws from the left rather than appearing all at once. A
+   background gradient sized 0% to 100%, so nothing about the box changes and
+   no neighbour reflows -- section 3 bans hover animations that move layout,
+   and a real text-decoration cannot be animated at all.
+
+   120ms on --ease-move, the same as every other hover on the site. Under
+   reduced motion tokens.css collapses the duration and the underline simply
+   appears, which is the state change intact. */
+.footer-list a {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0% var(--border-width-hairline);
+  transition:
+    background-size var(--duration-2) var(--ease-move),
+    color var(--duration-1) var(--ease-move);
+}
+
+.footer-list a:hover,
+.footer-list a:focus-visible {
   color: var(--color-text);
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
+  background-size: 100% var(--border-width-hairline);
 }
 
 .footer-legal {
@@ -1131,6 +1176,139 @@ table.data tbody tr:hover {
 
 .pod-glyph .pod-rule-dim {
   opacity: 0.32;
+}
+
+/* -----------------------------------------------------------------------------
+   Link previews.
+
+   A floating card on hover or focus, showing the destination's own share
+   image. Absolutely positioned inside an inline-block wrapper, so it cannot
+   reflow the sentence it sits in -- section 3 bans hover effects that move
+   layout, and an inline link inside a paragraph is the least forgiving place
+   to break that rule.
+
+   Opaque surface, not glass. Section 8.10: a backdrop-filter panel over
+   scrolling text has a contrast ratio that changes with whatever is behind it,
+   so the same card is compliant in one scroll position and not in the next.
+-------------------------------------------------------------------------------- */
+
+.lp {
+  position: relative;
+  display: inline-block;
+}
+
+.lp-card {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  width: 20rem;
+  overflow: hidden;
+  border: var(--border-width-hairline) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--duration-3) var(--ease-exit),
+    transform var(--duration-3) var(--ease-exit);
+}
+
+/* The script writes left and top; these two decide which way the card hangs
+   off that point, so a link near the top of the window flips below it. */
+.lp-card[data-side="above"] {
+  transform: translate(-50%, calc(-100% - 4px));
+}
+
+.lp-card[data-side="below"] {
+  transform: translate(-50%, 4px);
+}
+
+.lp[data-open="true"] .lp-card {
+  opacity: 1;
+  transition:
+    opacity var(--duration-3) var(--ease-enter),
+    transform var(--duration-3) var(--ease-enter);
+}
+
+.lp[data-open="true"] .lp-card[data-side="above"] {
+  transform: translate(-50%, -100%);
+}
+
+.lp[data-open="true"] .lp-card[data-side="below"] {
+  transform: translate(-50%, 0);
+}
+
+.lp-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-bottom: var(--border-width-hairline) solid var(--color-border);
+}
+
+.lp-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.lp-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.lp-summary {
+  font-size: var(--font-size-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-muted);
+}
+
+/* The docs section grid is a grid whose children are the cards. The wrapper is
+   the child now, so it has to behave like one -- and `overflow: hidden` on
+   that grid is exactly why the card is fixed rather than absolute. */
+.section-grid > .lp {
+  display: block;
+}
+
+.section-grid > .lp > .section-card {
+  height: 100%;
+}
+
+
+/* -----------------------------------------------------------------------------
+   The tilt reveal on the husk.yaml frame.
+
+   The card lies back and rotates up as the reader scrolls into it. Two custom
+   properties, written by ContainerScroll.tsx on a rAF; everything else is
+   here.
+
+   The perspective and the transform only exist once [data-tilt="on"] is set,
+   which the script sets after mount and never sets at all under
+   prefers-reduced-motion -- so with no JS, a failed hydration, or a reader who
+   asked for less motion, the frame is flat and upright, which is where the
+   reveal ends anyway.
+-------------------------------------------------------------------------------- */
+
+.tilt-wrap[data-tilt="on"] {
+  perspective: 1400px;
+  perspective-origin: 50% 0%;
+}
+
+.tilt-wrap[data-tilt="on"] .tilt-card {
+  transform: rotateX(var(--tilt, 0deg)) scale(var(--lift, 1));
+  transform-origin: 50% 0%;
+  /* No transition. The scroll position is the clock; a transition on top of it
+     would fight the scrub and lag the card behind the wheel. */
+  will-change: transform;
+}
+
+/* will-change is a standing promise to the compositor, so it is withdrawn the
+   moment the card is done moving. */
+.tilt-wrap:not([data-tilt="on"]) .tilt-card {
+  will-change: auto;
 }
 
 /* -----------------------------------------------------------------------------
