@@ -1,7 +1,8 @@
-import { readdir, stat } from 'node:fs/promises';
+import { open, readdir, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 import type { TranscriptSource } from '@husk-ai/core';
+import { parseMarkdownChat } from '@husk-ai/sessions';
 
 /**
  * Find transcripts without being told where they are.
@@ -27,6 +28,28 @@ interface Root {
   source: TranscriptSource;
   match: RegExp;
   depth: number;
+  /** Read a prefix and require it to look like a chat, not just carry the extension. */
+  sniff?: boolean;
+}
+
+/** Enough of a file to see whether a conversation starts -- a chat that does
+ * not begin in the first 32 KB is not what discovery is for. */
+const SNIFF_BYTES = 32 * 1024;
+
+async function sniffsAsChat(path: string): Promise<boolean> {
+  let fh;
+  try {
+    fh = await open(path, 'r');
+    const buf = Buffer.alloc(SNIFF_BYTES);
+    const { bytesRead } = await fh.read(buf, 0, SNIFF_BYTES, 0);
+    if (bytesRead === 0) return false;
+    // Two messages minimum: one role marker can be a coincidence in prose.
+    return (parseMarkdownChat(buf.subarray(0, bytesRead).toString('utf8'))?.messages.length ?? 0) >= 2;
+  } catch {
+    return false;
+  } finally {
+    await fh?.close();
+  }
 }
 
 function roots(cwd: string): Root[] {
@@ -39,8 +62,10 @@ function roots(cwd: string): Root[] {
     { dir: join(home, 'Downloads'), source: 'chatgpt', match: /^conversations.*\.json$/i, depth: 1 },
     { dir: join(home, 'Downloads'), source: 'universal', match: /chat.*\.json$/i, depth: 1 },
     { dir: join(home, '.cursor'), source: 'cursor', match: /\.(json|jsonl)$/i, depth: 2 },
-    // Anything the user is standing next to.
-    { dir: cwd, source: 'markdown', match: /\.(md|markdown)$/i, depth: 1 },
+    // Anything the user is standing next to. Markdown is content-sniffed: a
+    // repo's CHANGELOG is not a pasted chat, and offering it as one made
+    // discovery useless exactly where people try it first.
+    { dir: cwd, source: 'markdown', match: /\.(md|markdown)$/i, depth: 1, sniff: true },
     { dir: cwd, source: 'universal', match: /\.(jsonl)$/i, depth: 1 },
   ];
 }
@@ -88,6 +113,7 @@ async function walk(dir: string, root: Root, depth: number, out: Map<string, Can
     if (!st || st.size === 0) continue;
     // A multi-hundred-megabyte JSON is not a chat someone meant to import.
     if (st.size > 64 * 1024 * 1024) continue;
+    if (root.sniff && !(await sniffsAsChat(full))) continue;
 
     out.set(full, {
       path: full,

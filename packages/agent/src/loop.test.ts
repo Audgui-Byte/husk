@@ -238,6 +238,31 @@ describe('Agent: ceilings', () => {
     expect(result.usage.costUsd).toBe(0);
   });
 
+  it('refuses the first call when the prompt cannot fit the model context', async () => {
+    // A local server with a 512-token context (llama.cpp's long-time default)
+    // cannot hold Husk's own system prompt plus tool schemas (~2.5k). The run
+    // must say so, with the exact numbers, before a single model call.
+    const router = new FakeRouter([{ text: 'never sent' }], {
+      id: 'lmstudio/tiny',
+      provider: 'lmstudio',
+      name: 'tiny',
+      displayName: 'Tiny',
+      contextWindow: 512,
+      maxOutputTokens: 256,
+      supportsTools: true,
+      supportsVision: false,
+      supportsStreaming: true,
+    });
+    const agent = new Agent({ spec: specFor(), router, tools: [echo('echo')], logger: silent });
+    const result = await agent.run({ input: 'go' });
+
+    expect(result.stopReason).toBe('error');
+    expect(result.error?.code).toBe('E_CONTEXT_TOO_SMALL');
+    expect(result.error?.message).toMatch(/512-token context/);
+    expect(result.error?.message).toMatch(/needs about/);
+    expect(router.requests).toHaveLength(0);
+  });
+
   it('stops on the token ceiling', async () => {
     const turns = loopForever.map((t) => ({ ...t, usage: { inputTokens: 4000, outputTokens: 1000, costUsd: 0 } }));
     const { agent } = agentWith(turns, [echo('echo')]);

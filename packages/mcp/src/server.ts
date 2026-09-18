@@ -202,8 +202,10 @@ export function isolationNote(info: ComputerInfo): string {
   }
 
   const guardrails =
-    'This is a guarded working directory, NOT a sandbox: /work is jailed and destructive ' +
-    'commands are refused, but it shares the host kernel and network.';
+    'This is a guarded working directory, NOT a sandbox: file tools are confined to /work ' +
+    'and destructive commands are refused, but shell commands can still reach anything ' +
+    'your user can on the host -- filesystem, kernel and network. Keep secrets and ' +
+    'untrusted input out of it.';
 
   // Set by the local provider when a Windows host could not give it Linux.
   const degradation = info.spec.labels?.['husk.degradation'];

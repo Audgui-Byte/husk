@@ -223,6 +223,7 @@ class Run {
     // Better to say so before the first token.
     if (this.toolsByName.size > 0 && this.router.getModelInfo) {
       const info = await this.router.getModelInfo(this.model).catch(() => undefined);
+      if (info?.contextWindow) this.contextWindowTokens = info.contextWindow;
       if (info && info.supportsTools === false) {
         const err = {
           message: `${info.id} cannot call tools, and this husk declares ${this.toolsByName.size}`,
@@ -269,6 +270,9 @@ class Run {
     this.queue.end();
   }
 
+  /** The selected model's context window, when the router could say. */
+  private contextWindowTokens: number | undefined;
+
   private result(stopReason: RunResult['stopReason'], error?: RunResult['error']): RunResult {
     return {
       runId: this.runId,
@@ -290,7 +294,30 @@ class Run {
       await this.maybeTrim();
       await this.resolvePricing();
 
-      const estimate = this.budget.estimate(this.estimatePromptTokens(), ASSUMED_OUTPUT_TOKENS);
+      const promptTokens = this.estimatePromptTokens();
+
+      // A request that cannot fit is rejected here, with the exact numbers,
+      // rather than by the server after a long local load -- or worse, silently
+      // truncated into nonsense. Local servers default to tiny contexts
+      // (llama.cpp long shipped n_ctx 512), and Husk's own system prompt plus
+      // the computer tool schemas is ~2.5k tokens on its own.
+      if (this.contextWindowTokens !== undefined) {
+        const needed = promptTokens + ASSUMED_OUTPUT_TOKENS;
+        if (needed > this.contextWindowTokens) {
+          const reason =
+            `this run needs about ${needed} tokens (~${promptTokens} for the prompt and tool schemas, ` +
+            `${ASSUMED_OUTPUT_TOKENS} reserved for the reply), over ${this.model}'s ` +
+            `${this.contextWindowTokens}-token context. Raise the model's context length ` +
+            `(LM Studio: Context Length; llama.cpp: --ctx-size) or shorten the prompt.`;
+          this.emit({ type: 'warning', message: `stopping: ${reason}` });
+          return {
+            stopReason: 'error',
+            error: { message: reason, code: 'E_CONTEXT_TOO_SMALL' },
+          };
+        }
+      }
+
+      const estimate = this.budget.estimate(promptTokens, ASSUMED_OUTPUT_TOKENS);
       const decision = this.budget.check(estimate);
       if (!decision.ok) {
         this.emit({ type: 'warning', message: `stopping: ${decision.reason}` });
@@ -351,7 +378,9 @@ class Run {
     this.pricingResolved = true;
     if (!this.router.getModelInfo) return;
     try {
-      this.budget.setPricing(pricingOf(await this.router.getModelInfo(this.model)));
+      const info = await this.router.getModelInfo(this.model);
+      if (info?.contextWindow) this.contextWindowTokens = info.contextWindow;
+      this.budget.setPricing(pricingOf(info));
     } catch (err) {
       this.log.debug(`could not price ${this.model}`, err);
     }

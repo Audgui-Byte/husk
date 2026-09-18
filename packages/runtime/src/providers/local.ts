@@ -27,6 +27,7 @@ import {
   assertInJail,
   evaluateCommand,
   normaliseGuestPath,
+  rewriteGuestPaths,
   scrubEnv,
   shellQuote,
   toGuestPath,
@@ -433,6 +434,9 @@ class LocalComputer implements Computer {
     await mkdir(hostCwd, { recursive: true });
 
     const { env } = scrubEnv(process.env, { ...this.info.spec.env, ...req.env });
+    // scrubEnv passes the caller's own PWD through; the command starts in the
+    // workspace, so $PWD should say the same thing `pwd` does.
+    env.PWD = hostCwd;
     const script = typeof req.cmd === 'string' ? req.cmd : shellQuote(req.cmd);
     const { file, args, spawnEnv } = this.buildInvocation(script, hostCwd, guestCwd, env);
 
@@ -578,7 +582,12 @@ class LocalComputer implements Computer {
       return { file: 'cmd.exe', args: ['/d', '/s', '/c', script], spawnEnv: env };
     }
 
-    return { file: '/bin/sh', args: ['-c', script], spawnEnv: env };
+    // The posix shell has no portable way to receive a real `/work` (the WSL
+    // branch bind-mounts one; macOS has no mount namespaces at all), so the
+    // script's guest-absolute paths are mapped onto the workspace it runs in.
+    // Without this, file tools and the shell disagreed about the machine's
+    // own documented /work contract on the default provider.
+    return { file: '/bin/sh', args: ['-c', rewriteGuestPaths(script, this.jail)], spawnEnv: env };
   }
 
   /**

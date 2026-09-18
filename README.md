@@ -173,7 +173,7 @@ unavailable is an error, never a quiet downgrade to weaker isolation.
 | `podman` | 18 | Kernel, rootless | Free | Linux without Docker |
 | `ssh` | 16 | Whatever the remote gives you | Free if you own the box | An Oracle Always Free instance, a Pi, a VPS |
 | `fly` | 14 | microVM | Metered | Bursty parallel work |
-| `local` | 10 | **Guardrails only** | Free | WSL2 gives real Linux; POSIX jails your own shell |
+| `local` | 10 | **Guardrails only** | Free | WSL2 gives real Linux; POSIX runs your own shell with guardrails |
 
 > **The `local` provider is not a sandbox.** It stops accidents, not adversaries.
 > `husk doctor` reports `isolated: false` for it, and the first MCP tool result says so
