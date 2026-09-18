@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { CodeBlock, CommandBlock } from "@/components/CodeBlock";
+import { CodeBlock } from "@/components/CodeBlock";
+import { ContainerScroll } from "@/components/ContainerScroll";
+import { HeroObject } from "@/components/HeroObject";
+import { InstallSelector } from "@/components/InstallSelector";
+import { LinkPreview } from "@/components/LinkPreview";
+import { ScrollCue } from "@/components/ScrollCue";
+import { ScrollNarrative } from "@/components/ScrollNarrative";
 import { Reveal } from "@/components/Reveal";
 import { IsolationViewer } from "@/components/IsolationViewer";
 import { StaticTerminal } from "@/components/StaticTerminal";
 import { TerminalReplay } from "@/components/TerminalReplay";
+import { PREVIEWS } from "@/lib/previews";
 import {
   BROWSER_TOOLS,
   ONBOARDING,
@@ -13,10 +20,8 @@ import {
   DISTILL,
   DOCTOR,
   HUSK_YAML,
-  MCP_COMMAND,
   MCP_TOOLS,
   PROVIDERS,
-  REPO_URL,
 } from "@/lib/content";
 
 export const metadata: Metadata = {
@@ -33,7 +38,13 @@ export default function Home() {
         aria-labelledby="hero-title"
         style={{ position: "relative" }}
       >
-        <div>
+        {/* Two columns from --bp-lg. The left is what it has always been --
+            headline, lead, the install command, the two buttons, the meta line
+            -- at the width those were measured at. The right is the object.
+            Below --bp-lg the grid is one column and the object goes above the
+            copy, because a 3D scene between a headline and its own install
+            command would be an interruption. */}
+        <div className="hero-grid">
           <div className="hero-copy hero-copy-wide">
             <h1 id="hero-title" className="h-hero">
               Your AI chat gets a real computer of its own.
@@ -44,26 +55,27 @@ export default function Home() {
               already had into a bot that does the job again tomorrow.
             </p>
 
-            {/* 42rem, not 40. JetBrains Mono is wider than the fallback stack
+            {/* 42rem, not 40. The mono face is wider than the fallback stack
                 the 40rem cap was measured against, so the real face pushed the
-                install command 4px past its box the moment the fonts landed —
-                a scrollbar on the one string that matters, caused by fixing
-                something else. */}
+                install command past its box the moment the fonts landed — a
+                scrollbar on the one string that matters, caused by fixing
+                something else.
+
+                The selector replaces the bare command block. Both this and the
+                one in #mcp are the same component: the page used to hardcode
+                Claude Code in two places while the copy underneath promised
+                Cursor and Zed the same thing without saying what to type. */}
             <div style={{ marginTop: "var(--space-8)", maxWidth: "42rem" }}>
-              <CommandBlock command={MCP_COMMAND} size="lg" />
+              <InstallSelector size="lg" idPrefix="hero-install" />
             </div>
 
             <div className="hero-actions" style={{ marginTop: "var(--space-4)" }}>
               <a className="btn btn-primary btn-lg" href="#mcp">
                 What that command does
               </a>
-              <a
-                className="btn btn-secondary btn-lg"
-                href={REPO_URL}
-                rel="noreferrer noopener"
-              >
+              <LinkPreview {...PREVIEWS.source} className="btn btn-secondary btn-lg">
                 Read the source
-              </a>
+              </LinkPreview>
             </div>
 
             <p className="meta" style={{ marginTop: "var(--space-6)" }}>
@@ -71,7 +83,11 @@ export default function Home() {
               Cursor, Zed, or anything speaking MCP
             </p>
           </div>
+
+          <HeroObject />
         </div>
+
+        <ScrollCue />
 
         {/* The proof, directly under the claim. "A real computer" is a sentence
             anyone can write; this is twenty seconds of one running on a laptop
@@ -101,6 +117,12 @@ export default function Home() {
           was wrong.
         </p>
       </section>
+
+      {/* ------------------------------------------------------- the bridge */}
+      {/* The animated form of the two sections either side of it, so it gets
+          no heading and no eyebrow of its own. With JS off it is a plain
+          transcript of the same three facts, which is what a crawler sees. */}
+      <ScrollNarrative />
 
       {/* ---------------------------------------------------------- two jobs */}
       <section className="container section" aria-labelledby="jobs-title">
@@ -182,23 +204,26 @@ export default function Home() {
       <section className="container section" aria-labelledby="mcp-title" id="mcp">
         <div className="grid12">
           <div className="col-7">
-            <p className="eyebrow">the whole install</p>
-            <h2 id="mcp-title" className="h-section">
-              One line gives Claude Code a machine.
-            </h2>
+            <Reveal>
+              <p className="eyebrow">the whole install</p>
+              <h2 id="mcp-title" className="h-section">
+                One line gives your client a machine.
+              </h2>
+            </Reveal>
 
             <div style={{ marginTop: "var(--space-8)" }}>
-              <CommandBlock command={MCP_COMMAND} size="lg" />
+              <InstallSelector size="lg" idPrefix="mcp-install" />
             </div>
 
             <div className="prose" style={{ marginTop: "var(--space-6)" }}>
               <p>
-                There is no second step and no config file to edit. Claude Code
-                gets twenty tools against a real Linux machine — a shell, the
-                filesystem, ports, and a browser — and that filesystem persists
-                for the rest of the conversation. The same server
-                speaks streamable HTTP, so Cursor, Zed and anything else that
-                talks MCP get the same thing.
+                In Claude Code and Codex there is no second step and no config
+                file to edit. Cursor, Zed and Antigravity have no add command
+                of their own, so those get the block to paste and the path to
+                paste it into — the tab above switches between them. Either
+                way the client gets twenty tools against a real Linux machine —
+                a shell, the filesystem, ports, and a browser — and that
+                filesystem persists for the rest of the conversation.
               </p>
               <p>
                 The first tool result tells the model how isolated it is,
@@ -381,10 +406,12 @@ export default function Home() {
       >
         <div className="grid12">
           <div className="col-4">
-            <p className="eyebrow">the unit of value</p>
-            <h2 id="yaml-title" className="h-section">
-              What comes out is a file you can read.
-            </h2>
+            <Reveal>
+              <p className="eyebrow">the unit of value</p>
+              <h2 id="yaml-title" className="h-section">
+                What comes out is a file you can read.
+              </h2>
+            </Reveal>
             <div className="prose" style={{ marginTop: "var(--space-4)" }}>
               <p>
                 Deliberate key order, block scalars, and a provenance header
@@ -401,11 +428,11 @@ export default function Home() {
             </div>
           </div>
           <div className="col-8">
-            <CodeBlock
-              title="triage.yaml"
-              source={HUSK_YAML}
-              what="husk.yaml"
-            />
+            {/* The frame is unchanged -- same title bar, same copy button, same
+                highlighted source. The wrapper only tilts it. */}
+            <ContainerScroll>
+              <CodeBlock title="triage.yaml" source={HUSK_YAML} what="husk.yaml" />
+            </ContainerScroll>
           </div>
         </div>
       </section>
@@ -414,10 +441,12 @@ export default function Home() {
       <section className="container section" aria-labelledby="free-title" id="free">
         <div className="grid12">
           <div className="col-7">
-            <p className="eyebrow">cost</p>
-            <h2 id="free-title" className="h-section">
-              The free path is the same path everything else is built on.
-            </h2>
+            <Reveal>
+              <p className="eyebrow">cost</p>
+              <h2 id="free-title" className="h-section">
+                The free path is the same path everything else is built on.
+              </h2>
+            </Reveal>
             <div className="prose" style={{ marginTop: "var(--space-6)" }}>
               <p>
                 The local provider is the primitive. Docker, Podman, SSH and Fly
@@ -434,10 +463,10 @@ export default function Home() {
                 same way we do, by reading the repository.
               </p>
               <p>
-                <Link href="/pricing">
+                <LinkPreview {...PREVIEWS.pricing}>
                   What a hosted tier would have to add before it was worth
                   charging for
-                </Link>
+                </LinkPreview>
                 .
               </p>
             </div>

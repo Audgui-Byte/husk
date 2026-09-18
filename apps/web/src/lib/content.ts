@@ -6,16 +6,13 @@
  */
 
 /**
- * Set NEXT_PUBLIC_SITE_URL at deploy time. It feeds metadataBase, robots.txt and
- * sitemap.xml, so a wrong value here tells search engines someone else owns this
- * site. The localhost default is right for `next dev` and wrong nowhere else,
- * because nothing is deployed yet.
+ * `SITE_URL` is deliberately not here. It reads Vercel's `VERCEL_*` variables,
+ * which are not `NEXT_PUBLIC_` and are therefore `undefined` in a client
+ * bundle -- and this file is imported by client components. It lives in
+ * `lib/site-url.ts`, which only server code may import.
  */
 const stripTrailingSlash = (url: string) => url.replace(/\/+$/, "");
 
-export const SITE_URL = stripTrailingSlash(
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-);
 export const REPO_URL = "https://github.com/Hotragn/husk";
 /**
  * Where the Docs link in the nav goes.
@@ -26,12 +23,17 @@ export const REPO_URL = "https://github.com/Hotragn/husk";
  * `example.com` and `docs.example.com` once a real domain exists -- deriving
  * one from the other would be right exactly once.
  *
- * The fallback is the README, which is where the docs were before the docs
- * site was deployed. That is the honest default: a link that reaches
- * documentation, rather than one pointing at a hostname that may not answer.
+ * The fallback is split on environment. In `next dev` the docs are on port
+ * 3001 and running both at once is the normal case when a link crosses between
+ * them, so a dev link to GitHub is a link never exercised locally. In
+ * production an unset variable falls back to the README -- a page that answers,
+ * rather than a hostname that may not.
  */
 export const DOCS_URL = stripTrailingSlash(
-  process.env.NEXT_PUBLIC_DOCS_URL ?? `${REPO_URL}#readme`,
+  process.env.NEXT_PUBLIC_DOCS_URL ??
+    (process.env.NODE_ENV === "production"
+      ? `${REPO_URL}#readme`
+      : "http://localhost:3001"),
 );
 export const LICENCE = "Apache-2.0";
 
