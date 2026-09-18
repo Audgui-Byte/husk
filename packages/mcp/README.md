@@ -38,7 +38,7 @@ probing it with `uname`, `nproc`, `df` and `which python3`.
 ## Options
 
 ```
---session <key>     reuse one machine across calls (default: "mcp")
+--session <key>     reuse a named machine (default: unique to this server process)
 --provider <name>   docker | podman | local | ssh | fly
 --flavor <name>     base | python | node | full
 --network <mode>    none | egress | full
@@ -97,3 +97,20 @@ is refused and that a path outside `/work` is rejected, then destroys the machin
 - Closing stdin shuts the server down and destroys the machine, so a crashed client does
   not leave a container running.
 - `--keep` opts out of that, for a machine you want to reattach to.
+
+## Reconnects and health checks
+
+A stopped computer is started again before use, preserving its workspace. The MCP
+server checks a cached computer before each tool call. An unavailable engine or a
+failed health probe is reported as an error; a connection alone does not mean the
+computer is ready. Run `husk doctor` under the same account as the MCP client to
+check provider access. On Windows, start Docker Desktop and check `docker info`.
+
+Each server process gets its own session key by default so separate clients do
+not stop or reuse each other’s computer. Use `--session <key> --keep` (or
+`HUSK_SESSION` with `--keep`) to reconnect to a named workspace. Clients that
+explicitly share a key must use `--keep` to avoid destroying it on disconnect.
+A client that shares one MCP process across chats also shares that computer.
+
+The optional viewer is separate: `viewer not running` only means `husk serve`
+is not available. It does not describe the container’s health.

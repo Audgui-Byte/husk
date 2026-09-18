@@ -310,6 +310,11 @@ async function computerInfo(computer: Computer): Promise<ToolResult> {
     `computer  ${info.id}`,
   ].join('\n');
 
+  if (r.exitCode !== 0 || r.timedOut) {
+    const reason = r.timedOut ? 'probe timed out' : `probe exited with code ${r.exitCode}`;
+    return fail(redact(`${header}\nhealth    unavailable: ${reason}\n${r.stderr.trim() || r.stdout.trim()}\nRun \`husk doctor\` to check the provider, then retry.`));
+  }
+
   // Where a human can watch this machine. `computer_info` is the tool an agent
   // calls to orient itself and the one whose output a person reliably reads, so
   // the workspace link belongs here rather than on every result.

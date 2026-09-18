@@ -15,6 +15,7 @@ import { DockerProvider } from './providers/docker.js';
 import { PodmanProvider } from './providers/podman.js';
 import { SshProvider } from './providers/ssh.js';
 import { FlyProvider } from './providers/fly.js';
+import { ensureRunning } from './readiness.js';
 
 export interface ProviderStatus extends Availability {
   name: ProviderName;
@@ -188,14 +189,14 @@ export class ComputerManager {
     const inflight = this.pending.get(key);
     if (inflight) return inflight;
 
-    const existingId = await readBinding(key);
-    if (existingId) {
-      const found = await this.get(existingId);
-      if (found && found.info.state !== 'destroyed') return found;
-      await clearBinding(key);
-    }
-
     const p = (async () => {
+      const existingId = await readBinding(key);
+      if (existingId) {
+        const found = await this.get(existingId);
+        if (found && found.info.state !== 'destroyed') return ensureRunning(found);
+        await clearBinding(key);
+      }
+
       const computer = await this.create({
         // A computer reached by a stable key is somebody's bot -- one chat, one
         // session, one machine -- and it is expected to still be there

@@ -125,4 +125,20 @@ describe('computer_info', () => {
 
     expect(cmds[0]?.endsWith('; }')).toBe(true);
   });
+
+  it('reports a failed probe instead of a healthy-looking header', async () => {
+    const { computer } = recording();
+    computer.exec = async () => ({ exitCode: 1, stdout: '', stderr: 'container is not running', durationMs: 1, timedOut: false, truncated: false });
+    const result = await callTool(computer, 'computer_info', {});
+    expect(result.isError).toBe(true);
+    expect(result.content[0]).toMatchObject({ text: expect.stringContaining('container is not running') });
+  });
+
+  it('reports timeouts even when the probe returns partial output', async () => {
+    const { computer } = recording();
+    computer.exec = async () => ({ exitCode: 0, stdout: 'partial', stderr: '', durationMs: 20_000, timedOut: true, truncated: false });
+    const result = await callTool(computer, 'computer_info', {});
+    expect(result.isError).toBe(true);
+    expect(result.content[0]).toMatchObject({ text: expect.stringContaining('probe timed out') });
+  });
 });
