@@ -308,8 +308,15 @@ export class OciComputer implements Computer {
       const { stdout } = await this.cli(['inspect', this.native]);
       const data = JSON.parse(stdout)[0];
       if (data) this.info.state = readState(data);
-    } catch {
-      this.info.state = 'destroyed';
+    } catch (err) {
+      const message = String((err as { stderr?: string }).stderr ?? (err as Error).message);
+      if (/no such (?:object|container)/i.test(message)) {
+        this.info.state = 'destroyed';
+      } else {
+        throw new HuskError('E_COMPUTER_FAILED', `could not inspect ${this.cfg.binary} computer ${this.id}: ${message}`, {
+          hint: 'check that the container engine is running and accessible, then retry; run `husk doctor` for details',
+        });
+      }
     }
     return this.info;
   }
@@ -692,7 +699,11 @@ export class OciComputer implements Computer {
     this.closeForwarders();
     const keyed = Boolean(this.info.spec.labels?.['husk.key']);
     const args = keyed ? ['rm', '-f', this.native] : ['rm', '-f', '-v', this.native];
-    await this.cli(args, 120_000).catch(() => {});
+    await this.cli(args, 120_000);
+    // Docker's rm -v removes anonymous volumes, not our named /work volume.
+    if (!keyed && this.info.spec.persist) {
+      await this.cli(['volume', 'rm', volumeName(this.info.id, this.info.spec)]);
+    }
     // The last-use record outlives the container otherwise, and ids are
     // unique, so the file would sit in ~/.husk/computers forever.
     await forgetInfo(this.info.id).catch(() => {});

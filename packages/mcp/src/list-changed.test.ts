@@ -45,7 +45,7 @@ function fakeComputer(labels: Record<string, string>): Computer {
 
 /** Connect a client, call one tool, and report what the tool list did. */
 async function session(labels: Record<string, string>) {
-  const manager = { async ensure() { return fakeComputer(labels); } } as unknown as ComputerManager;
+  const manager = { async ensure() { return fakeComputer(labels); }, async create() { return fakeComputer(labels); } } as unknown as ComputerManager;
   const server = new HuskMcpServer({ manager, ephemeral: false, logger: silent });
   const client = new Client({ name: 'probe', version: '0' }, { capabilities: {} });
   const [clientT, serverT] = InMemoryTransport.createLinkedPair();

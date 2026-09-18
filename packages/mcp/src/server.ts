@@ -1,10 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { HUSK_VERSION, createLogger, quiet } from '@husk-ai/core';
+import { HUSK_VERSION, createLogger, quiet, redact } from '@husk-ai/core';
 import type { Computer, ComputerInfo, ComputerSpec, Logger } from '@husk-ai/core';
-import { ComputerManager } from '@husk-ai/runtime';
+import { ComputerManager, ensureRunning } from '@husk-ai/runtime';
 import { audited } from '@husk-ai/core';
 import { callTool, toolsFor } from './tools.js';
 
@@ -39,6 +40,7 @@ export class HuskMcpServer {
   private readonly mcp: Server;
   private readonly manager: ComputerManager;
   private readonly sessionKey: string;
+  private readonly namedSession: boolean;
   private readonly spec: ComputerSpec;
   private readonly ephemeral: boolean;
   private readonly log: Logger;
@@ -50,7 +52,8 @@ export class HuskMcpServer {
 
   constructor(opts: HuskMcpOptions = {}) {
     this.manager = opts.manager ?? new ComputerManager();
-    this.sessionKey = opts.sessionKey ?? process.env.HUSK_SESSION ?? 'mcp';
+    this.namedSession = opts.sessionKey !== undefined || process.env.HUSK_SESSION !== undefined;
+    this.sessionKey = opts.sessionKey ?? process.env.HUSK_SESSION ?? `mcp-${randomUUID()}`;
     this.spec = opts.spec ?? {};
     this.ephemeral = opts.ephemeral ?? true;
     // stderr only: stdout is the protocol.
@@ -79,7 +82,14 @@ export class HuskMcpServer {
 
     this.mcp.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToolResult> => {
       const { name, arguments: args } = request.params;
-      const computer = await this.getComputer();
+      let computer: Computer;
+      try {
+        computer = await this.getComputer();
+      } catch (err) {
+        const error = err as Error & { hint?: string };
+        const text = `Computer unavailable: ${error.message}\n${error.hint ?? 'Run husk doctor to check the provider, then retry.'}`;
+        return { isError: true, content: [{ type: 'text', text: redact(text) }] };
+      }
       const toolArgs = (args ?? {}) as Record<string, unknown>;
 
       // Every call, at the one place they all pass through. An audit log that
@@ -136,13 +146,19 @@ export class HuskMcpServer {
 
   /** Create the machine on first use, and only once even under concurrent calls. */
   private async getComputer(): Promise<Computer> {
-    if (this.computer) return this.computer;
     this.creating ??= (async () => {
-      const c = await this.manager.ensure(this.sessionKey, {
+      if (this.computer) return ensureRunning(this.computer);
+      const spec = {
         name: `mcp-${this.sessionKey}`,
         idleTimeoutSec: 3600,
+        persist: true,
         ...this.spec,
-      });
+      };
+      // Only explicit sessions need a durable binding. Anonymous sessions own
+      // their workspace, so disconnecting can remove it with the computer.
+      const c = this.namedSession
+        ? await this.manager.ensure(this.sessionKey, spec)
+        : await this.manager.create(spec);
       this.log.info(`computer ready: ${c.id} (${c.info.provider})`);
       this.computer = c;
       await this.announceDegradation(c);

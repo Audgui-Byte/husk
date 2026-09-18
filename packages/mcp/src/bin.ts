@@ -17,7 +17,7 @@ usage
   npx -y @husk-ai/mcp [options]
 
 options
-  --session <key>     reuse one machine across calls (default: "mcp")
+  --session <key>     reuse a named machine (default: unique to this server process)
   --provider <name>   docker | podman | local | ssh | fly  (default: best available)
   --flavor <name>     base | python | node | full          (default: base)
   --network <mode>    none | egress | full                 (default: egress)
