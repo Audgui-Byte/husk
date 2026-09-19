@@ -13,6 +13,56 @@ not here.
 
 ### Fixed
 
+- **`/work` did not name the same file for the shell as it did for the file tools.**
+  Husk tells an agent that `/work` is its workspace. On the `local` provider the file
+  tools honoured that and the posix shell did not, so `write_file('/work/scrape.py')`
+  followed by `python3 /work/scrape.py` returned file-not-found — "write a script, then
+  run it", on the provider you get by default when there is no Docker. The shell now
+  maps guest-absolute paths onto the workspace it is already running in: quote-aware,
+  lexical, trailing slashes preserved so `/work/$f` still concatenates, and lookalikes
+  like `/workshop` left alone rather than helpfully repointed at a host file. Heredoc
+  bodies are copied through untouched, because `cat > /work/notes.md <<EOF` is how an
+  agent writes a file and the thing it writes about is usually the workspace. On WSL2
+  the shell gets a real `/work` instead, bind-mounted per exec inside `unshare -mr`.
+  A conformance suite now writes a file through the runtime, MCP, HTTP and shell
+  surfaces and reads it back through every other one, against both `local` and
+  `docker`, so the next surface to invent its own path space fails in CI.
+- **The safety language called `/work` jailed when only half of it was.** That was true
+  of the file tools and false of the shell, in four documents and in the MCP note a
+  model reads before its first tool call — and a model that believes its shell is
+  contained takes risks it otherwise would not. The docs now say which half is
+  confined. The same correction reaches the trust-boundary diagram and the README for
+  0.1.4: the path jail is a `local` control, not something every provider enforces. On
+  `docker`, `podman` and `fly` the container is the boundary, so `read_file
+  /etc/passwd` returns the container's own copy.
+- **A run that could not fit the model's context was truncated into nonsense instead of
+  refused.** Local servers still default to tiny contexts — llama.cpp long shipped
+  `n_ctx 512` — and Husk's own system prompt plus the computer tool schemas is about
+  2.5k tokens before the conversation starts. The run is now rejected before the first
+  call, naming the tokens needed, the tokens available and the setting to raise.
+- **A Chromium launch that never opened its debugging port leaked a browser per
+  attempt.** The wait is bounded and the process is reaped, so a machine that cannot
+  start a browser says so instead of accumulating one.
+- **`husk import` offered ordinary repository Markdown as chat transcripts.** Run from a
+  project root it listed eighteen candidates, `CHANGELOG.md` among them, which made
+  discovery useless in the first place most people try it. Markdown is content-sniffed
+  now and has to look like a conversation.
+- **A secret in a transcript title survived into the name derived from it.** Distilling
+  a chat that mentioned an API key produced the slug `use-key-sk-antredacted` — the
+  body was redacted and the prefix was not, which is a smaller leak rather than no
+  leak. Redaction runs before anything becomes a name, a slug or a filename.
+- **The distiller reported "configured without tools" while the spec it had just
+  written listed them.** Prose and structured output are checked against each other.
+- **An MCP computer that had been stopped could look connected while every command
+  failed.** The next call resumes it where it can and reports the failure clearly where
+  it cannot, and a failed readiness probe no longer returns a healthy-looking header.
+- **`husk exec` turned a cmd.exe quoting mistake into somebody else's error message.**
+  The documented `husk exec dev -- 'uname -sr && python3 -V'` is a posix-shell form;
+  `cmd.exe` does not strip single quotes, so Husk received `'uname` and the container
+  runtime failed with `exec: "'uname": executable file not found in $PATH`. Husk now
+  recognises the stray quote before it resolves a provider and prints the double-quoted
+  form of what you meant.
+
 - **On Windows without a working WSL, `husk doctor` said nothing useful and sometimes
   contradicted itself.** The warning written for that case was gated on a test that no
   reachable state could pass, so it had never printed. The `local` provider reported
