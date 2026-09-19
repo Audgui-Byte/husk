@@ -11,6 +11,28 @@ not here.
 
 ## [Unreleased]
 
+### Added
+
+- **`husk onboard` — the guided setup that was missing.** Between `npm i -g @husk-ai/cli`
+  and a working first command sat: read `doctor`, pick one of eleven model providers, go
+  and find a key, export it, come back, work out which of twenty commands to run. Every
+  step of that was documented and none of it was in front of you. `onboard` walks the
+  same ground and then does the next thing each time — it names your provider and how
+  isolated it actually is, creates a computer and destroys it in front of you so you have
+  seen it work before configuring anything, names the cheapest route to a model if you
+  have none, and prints the MCP line for your editor. Five steps, each skippable, safe to
+  re-run.
+
+  It never asks for an API key. Husk reads credentials from the environment and does not
+  store them; an onboarding that offered to hold one would make that false on the very
+  first run, so it prints the `export` line and re-probes. With no terminal it prints the
+  whole path as text and creates nothing, because a CLI that blocks for input inside a
+  Dockerfile is a CLI people stop installing.
+- **The one-time orientation now reaches every entry point.** It was wired to `husk up`
+  alone, so anyone whose first command was `husk mcp` — a model about to be handed a
+  shell — was never told what the isolation boundary was. `run`, `serve` and `mcp` say it
+  too now, on stderr, so the MCP protocol channel stays clean.
+
 ### Fixed
 
 - **`/work` did not name the same file for the shell as it did for the file tools.**

@@ -56,11 +56,18 @@ sandboxed when it is not makes worse decisions than one that knows.
 ## The CLI
 
 ```bash
-npx @husk-ai/cli doctor                  # what this machine can offer
+npx @husk-ai/cli onboard                 # guided setup, five steps, start here
+npx @husk-ai/cli doctor                  # or go straight to what this machine can offer
 npx @husk-ai/cli up dev --flavor python  # bring up a Linux computer
 npx @husk-ai/cli exec dev -- 'uname -sr && python3 -V'
 npx @husk-ai/cli rm dev                  # tear it down
 ```
+
+`onboard` names your provider and how isolated it really is, creates a computer and
+destroys it in front of you, points at the shortest route to a model if you have none,
+and prints the MCP line for your editor. It never asks for an API key — husk reads
+credentials from the environment and does not store them, so it prints the `export` line
+and re-checks.
 
 On Windows `cmd.exe`, use double quotes -- it does not strip single ones, so the
 quotes would reach the container as part of the command:
@@ -127,7 +134,7 @@ checks. Five worked examples live in [`examples/`](examples/).
   reporter, no version ping.
 - **No native modules.** `npm install` finishes on Windows with no C++ toolchain. Node
   20.10 or newer.
-- **1,730 tests across 99 files**, passing with no API key and no network. Twenty-two of
+- **1,739 tests across 100 files**, passing with no API key and no network. Twenty-two of
   them are the container half of the workspace-conformance matrix and skip when no Docker
   daemon answers; the rest do not need one.
 
