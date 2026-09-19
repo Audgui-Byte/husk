@@ -93,19 +93,25 @@ async function localOffersWork(): Promise<boolean> {
 }
 
 /**
- * Is a Docker daemon actually answering?
+ * Is a Docker daemon answering, *and* can it run the images this suite needs?
  *
- * `docker` being on PATH is not the question -- Docker Desktop installs the CLI
- * and leaves it pointed at a daemon that may be down, and `docker version`
- * exits non-zero in exactly that case.
+ * Two separate questions, and asking only the first is how this went red on CI.
+ * `docker` being on PATH does not mean a daemon is up -- Docker Desktop installs
+ * the CLI and leaves it pointed at one that may be down, and `docker version`
+ * exits non-zero in that case. But GitHub's `windows-latest` runner answers that
+ * question with a cheerful yes and then cannot pull `debian:bookworm-slim`,
+ * because the daemon it is running serves *Windows* containers. The suite booted
+ * a provider that looked available and failed on the image.
+ *
+ * `{{.Server.Os}}` is the field that distinguishes them.
  */
-function dockerAnswers(): boolean {
-  const out = spawnSync('docker', ['version', '--format', '{{.Server.Version}}'], {
+function dockerRunsLinux(): boolean {
+  const out = spawnSync('docker', ['version', '--format', '{{.Server.Os}}'], {
     timeout: 20_000,
     encoding: 'utf8',
     windowsHide: true,
   });
-  return out.status === 0 && !!out.stdout?.trim();
+  return out.status === 0 && out.stdout?.trim() === 'linux';
 }
 
 interface Harness {
@@ -361,11 +367,11 @@ describe.skipIf(!LOCAL_WORK)('local', () => {
 });
 
 /**
- * Docker only when a daemon answers. `describe.skipIf` rather than a silent
- * pass: a suite that quietly covers one provider while claiming to cover two is
- * the same species of problem this file exists to catch.
+ * Docker only when a daemon answers *for Linux*. `describe.skipIf` rather than a
+ * silent pass: a suite that quietly covers one provider while claiming to cover
+ * two is the same species of problem this file exists to catch.
  */
-const DOCKER = dockerAnswers();
+const DOCKER = dockerRunsLinux();
 describe.skipIf(!DOCKER)('docker', () => {
   runSuite('docker', () => new DockerProvider());
 });
