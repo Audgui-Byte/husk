@@ -42,7 +42,10 @@ not here.
   call, naming the tokens needed, the tokens available and the setting to raise.
 - **A Chromium launch that never opened its debugging port leaked a browser per
   attempt.** The wait is bounded and the process is reaped, so a machine that cannot
-  start a browser says so instead of accumulating one.
+  start a browser says so instead of accumulating one. The error quotes the real
+  ceiling too: it said "within 40 seconds", which is the poll's arithmetic while every
+  connect is refused instantly, not the 90 seconds a wedged listener can actually
+  take.
 - **`husk import` offered ordinary repository Markdown as chat transcripts.** Run from a
   project root it listed eighteen candidates, `CHANGELOG.md` among them, which made
   discovery useless in the first place most people try it. Markdown is content-sniffed
