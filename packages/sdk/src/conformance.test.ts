@@ -68,6 +68,31 @@ const CLI_BIN = join(HERE, '..', '..', 'cli', 'dist', 'bin.js');
 const GUEST = '/work';
 
 /**
+ * Can the `local` provider on this host actually offer `/work`?
+ *
+ * On posix it rewrites guest paths onto the workspace, and on WSL2 it
+ * bind-mounts a real `/work` -- but on a Windows host with no working WSL it
+ * falls back to `cmd.exe`, where there is no `/work`, no `sh` and no heredoc.
+ * That fallback is deliberate: the provider reports its own raw workspace as
+ * `workdir` rather than inventing a path it cannot honour, and the degradation
+ * is covered by its own tests in `packages/runtime`.
+ *
+ * So the question is not "is this Windows" but "did this computer get the
+ * `/work` the contract is about", and the provider answers it directly. Asking
+ * the provider beats guessing from `process.platform`: this repository is
+ * developed on a Windows host *with* WSL2, where the contract does hold and the
+ * suite must run.
+ */
+async function localOffersWork(): Promise<boolean> {
+  const p = new LocalProvider();
+  const c = await p.create({ name: `conf-probe-${process.pid}` }).catch(() => null);
+  if (!c) return false;
+  const ok = c.info.workdir === GUEST;
+  await c.destroy().catch(() => undefined);
+  return ok;
+}
+
+/**
  * Is a Docker daemon actually answering?
  *
  * `docker` being on PATH is not the question -- Docker Desktop installs the CLI
@@ -330,7 +355,10 @@ function runSuite(label: string, makeProvider: () => ComputerProvider): void {
   });
 }
 
-runSuite('local', () => new LocalProvider());
+const LOCAL_WORK = await localOffersWork();
+describe.skipIf(!LOCAL_WORK)('local', () => {
+  runSuite('local', () => new LocalProvider());
+});
 
 /**
  * Docker only when a daemon answers. `describe.skipIf` rather than a silent
@@ -352,7 +380,7 @@ describe.skipIf(!DOCKER)('docker', () => {
  * a tree where only some packages have a `dist`, and a missing sibling build is
  * not a conformance failure.
  */
-describe.skipIf(!existsSync(CLI_BIN))('workspace conformance through the CLI binary', () => {
+describe.skipIf(!existsSync(CLI_BIN) || !LOCAL_WORK)('workspace conformance through the CLI binary', () => {
   const name = `conf-cli-${process.pid}`;
 
   function husk(args: string[], timeout = 240_000): { status: number | null; out: string } {
